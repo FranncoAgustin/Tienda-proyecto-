@@ -1,0 +1,49 @@
+<html>
+  <body>
+    <h1>Importar lista desde PDF</h1>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <p>
+        <input type="file" name="file" accept="application/pdf" required>
+      </p>
+      <p>
+        <label>
+          <input type="checkbox" name="update_only" {% if update_only %}checked{% endif %}>
+          Solo actualizar (no crear nuevos productos)
+        </label>
+      </p>
+      <button>Procesar PDF</button>
+    </form>
+
+    {% if msg %}<p><strong>{{ msg }}</strong></p>{% endif %}
+
+    {% if report.usd_to_review %}
+      <h3>Precios en USD para revisar</h3>
+      <ul>
+        {% for it in report.usd_to_review %}
+          <li>{{ it.sku }} — U$S {{ it.price_usd }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if report.not_found and update_only %}
+      <h3>No encontrados en DB (no creados por modo “Actualizar solo”)</h3>
+      <ul>
+        {% for sku in report.not_found %}
+          <li>{{ sku }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if report.not_seen_active %}
+      <h3>Activos no vistos en este PDF (solo informe)</h3>
+      <p class="muted">Revisá si querés deshabilitarlos manualmente desde el admin.</p>
+      <ul>
+        {% for sku in report.not_seen_active %}
+          <li>{{ sku }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </body>
+</html>

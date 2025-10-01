@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Bitácora de stock</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
+    th { background: #fafafa; }
+    .muted { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Bitácora de movimientos de stock</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Producto</th>
+        <th>Variante</th>
+        <th>Cantidad</th>
+        <th>Precio compra</th>
+        <th>Nota</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.date }}</td>
+        <td>{{ e.product.public_name }} <span class="muted">({{ e.product.sku }})</span></td>
+        <td>
+          {% if e.variant %}
+            {{ e.variant.color }} {% if e.variant.size %}{{ e.variant.size }}{% endif %}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>{{ e.quantity }}</td>
+        <td>$ {{ e.unit_cost }}</td>
+        <td>{{ e.note }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">Sin movimientos todavía.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

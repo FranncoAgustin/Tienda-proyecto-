@@ -1,0 +1,57 @@
+{# templates/shop/owner/product_manage.html #}
+<h1>{{ product|default:"Nuevo producto" }}</h1>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <fieldset>
+    <legend>Producto</legend>
+    {{ form.as_p }}
+  </fieldset>
+
+  <fieldset>
+    <legend>Variantes</legend>
+    {{ vfs.management_form }}
+    {% for form in vfs %}
+      <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px;">
+        {{ form.as_p }}
+        {% if form.instance.pk %}
+          <p>Actual: {% if form.instance.image %}<img src="{{ form.instance.image.url }}" style="height:60px">{% else %}<em>sin imagen</em>{% endif %}</p>
+        {% endif %}
+        {% if vfs.can_delete %}
+          <label>Eliminar {{ form.DELETE }}</label>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <button type="button" onclick="addForm('variants')">+ Agregar variante</button>
+  </fieldset>
+
+  <fieldset>
+    <legend>Imágenes del producto</legend>
+    {{ pifs.management_form }}
+    {% for form in pifs %}
+      <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px;">
+        {{ form.as_p }}
+        {% if form.instance.pk %}
+          <p>Actual: {% if form.instance.image %}<img src="{{ form.instance.image.url }}" style="height:60px">{% else %}<em>sin imagen</em>{% endif %}</p>
+        {% endif %}
+        {% if pifs.can_delete %}
+          <label>Eliminar {{ form.DELETE }}</label>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <button type="button" onclick="addForm('images')">+ Agregar imagen</button>
+  </fieldset>
+
+  <button type="submit">Guardar</button>
+</form>
+
+<script>
+function addForm(prefix){
+  const total = document.getElementById('id_'+prefix+'-TOTAL_FORMS');
+  const current = parseInt(total.value, 10);
+  const formsetDivs = document.querySelectorAll('[name^="'+prefix+'-"][name$="-DELETE"]').length; // aproximación
+  // Para producción: cloná un form vacío oculto o usá formset dinámico (htmx/Stimulus).
+  alert('Para agregar dinámicamente, conviene usar un formset vacío como template o HTMX. Te lo armo si querés.');
+}
+</script>

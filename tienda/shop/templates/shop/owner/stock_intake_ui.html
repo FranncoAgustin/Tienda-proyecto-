@@ -1,0 +1,572 @@
+{% extends "base.html" %}
+
+{% block title %}Ingresar stock{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+
+  <div id="statusBar" class="alert alert-warning d-none py-2 px-3 small" role="alert"></div>
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h5 mb-0">Ingresar stock</h1>
+    <div class="btn-group">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_dashboard' %}">← Volver</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_bitacora' %}">📜 Bitácora</a>
+    </div>
+  </div>
+
+  <!-- Alta rápida de producto -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <button class="btn btn-link p-0" data-bs-toggle="collapse" data-bs-target="#nuevoProducto" aria-expanded="false">
+        ➕ Nuevo producto (alta rápida)
+      </button>
+    </div>
+    <div id="nuevoProducto" class="collapse">
+      <div class="card-body">
+        <form id="newProductForm" class="row g-3">
+          {% csrf_token %}
+          <div class="col-md-4">
+            <label class="form-label">SKU *</label>
+            <input id="np_sku" type="text" class="form-control" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Nombre público</label>
+            <input id="np_public_name" type="text" class="form-control" placeholder="Si lo dejás vacío, usa el SKU">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Precio base</label>
+            <input id="np_base_price" type="text" class="form-control" placeholder="ej: 1234,56">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Descripción</label>
+            <textarea id="np_description" rows="2" class="form-control" placeholder="Opcional"></textarea>
+          </div>
+
+          <div class="col-12">
+            <div class="form-check">
+              <input id="np_active" type="checkbox" class="form-check-input" checked>
+              <label class="form-check-label" for="np_active">Activo</label>
+            </div>
+          </div>
+
+          <hr class="mt-2">
+
+          <div class="col-12">
+            <div class="form-text mb-2">Variante opcional (podés dejarlo vacío y crearla después)</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Color</label>
+            <input id="nv_color" type="text" class="form-control" placeholder="ej: Rojo">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Talle/Medida</label>
+            <input id="nv_size" type="text" class="form-control" placeholder="ej: 400cc">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">SKU variante</label>
+            <input id="nv_sku" type="text" class="form-control" placeholder="Opcional">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Stock inicial</label>
+            <input id="nv_stock" type="number" class="form-control" min="0" value="0">
+          </div>
+
+          <div class="col-12 d-flex justify-content-end gap-2">
+            <button id="btnCreateProduct" type="button" class="btn btn-primary">Crear producto</button>
+          </div>
+          <div id="np_msg" class="form-text text-success"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buscador de producto (typeahead) -->
+  <div class="card mb-3">
+    <div class="card-header">Buscar producto</div>
+    <div class="card-body">
+
+      <div class="position-relative">
+        <div class="input-group">
+          <input id="q" type="text" class="form-control" autocomplete="off"
+                 placeholder="Escribí el SKU o nombre... (↑/↓ y Enter para elegir)">
+          <button id="btnSearch" class="btn btn-outline-secondary" type="button">Buscar</button>
+        </div>
+
+        <!-- Dropdown de sugerencias -->
+        <div id="typeahead"
+             class="dropdown-menu show w-100 p-0"
+             style="display:none; max-height:320px; overflow:auto;">
+          <!-- items generados por JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Selección de producto y variantes -->
+  <div id="productBox" class="card d-none">
+    <div class="card-header">Producto seleccionado</div>
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <img id="pThumb" src="" class="rounded" style="width:64px;height:64px;object-fit:cover;" alt="">
+        <div>
+          <div id="pTitle" class="fw-semibold"></div>
+          <div id="pSku" class="text-muted small"></div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-2">
+        <div class="col-12">
+          <label class="form-label">Variante</label>
+          <div id="variants" class="d-flex flex-wrap gap-2"></div>
+          <div id="stockNow" class="form-text"></div>
+        </div>
+      </div>
+
+      <div id="qtyBox" class="row g-3 d-none">
+        <div class="col-md-3">
+          <label class="form-label">Cantidad a ingresar</label>
+          <input id="qty" type="number" class="form-control" step="1" value="1" min="1">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Precio de compra (bitácora)</label>
+          <input id="unit_cost" type="text" class="form-control" placeholder="ej: 5.00">
+          <div class="form-text">No modifica el precio de venta</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Notas</label>
+          <input id="note" type="text" class="form-control" placeholder="Proveedor, remito, comentarios...">
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button id="saveBtn" class="btn btn-primary" type="button">Guardar ingreso</button>
+        <a class="btn btn-outline-secondary" href="{% url 'owner_dashboard' %}">Volver</a>
+      </div>
+      <div id="msg" class="form-text mt-2"></div>
+    </div>
+  </div>
+
+</div>
+
+<form style="display:none">{% csrf_token %}</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // ======= barra de estado y captura global de errores =======
+  const statusBar = document.getElementById('statusBar');
+  function showStatus(msg, cls='alert-warning') {
+    statusBar.className = `alert ${cls} py-2 px-3 small`;
+    statusBar.textContent = msg;
+    statusBar.classList.remove('d-none');
+  }
+  function hideStatus(){ statusBar.classList.add('d-none'); }
+
+  window.addEventListener('error', (e) => {
+    console.error('JS error:', e.error || e.message);
+    showStatus('⚠️ Error de JavaScript: ' + (e.message || 'revisá la consola (F12 → Console)'), 'alert-danger');
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error('Promise error:', e.reason);
+    showStatus('⚠️ Error en una operación: ' + (e.reason && (e.reason.message || e.reason)) , 'alert-danger');
+  });
+
+  // ======= CSRF robusto (input primero, cookie fallback) =======
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+  const csrfInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+  const csrftoken = (csrfInput && csrfInput.value) || getCookie('csrftoken') || '';
+
+  // ======= DOM refs =======
+  const q = document.getElementById('q');
+  const btnSearch = document.getElementById('btnSearch');
+
+  const productBox = document.getElementById('productBox');
+  const pTitle = document.getElementById('pTitle');
+  const pSku = document.getElementById('pSku');
+  const pThumb = document.getElementById('pThumb');
+  const variantsDiv = document.getElementById('variants');
+  const stockNow = document.getElementById('stockNow');
+  const qtyBox = document.getElementById('qtyBox');
+  const qtyInput = document.getElementById('qty');
+  const unitCost = document.getElementById('unit_cost');
+  const note = document.getElementById('note');
+  const saveBtn = document.getElementById('saveBtn');
+  const msg = document.getElementById('msg');
+
+  // Alta rápida
+  const npMsg = document.getElementById('np_msg');
+  const npSku = document.getElementById('np_sku');
+  const npPublicName = document.getElementById('np_public_name');
+  const npBasePrice = document.getElementById('np_base_price');
+  const npDesc = document.getElementById('np_description');
+  const npActive = document.getElementById('np_active');
+
+  const nvColor = document.getElementById('nv_color');
+  const nvSize = document.getElementById('nv_size');
+  const nvSku = document.getElementById('nv_sku');
+  const nvStock = document.getElementById('nv_stock');
+  const btnCreateProduct = document.getElementById('btnCreateProduct');
+
+  let currentProduct = null;
+  let currentVariantId = null;
+
+  // ======= API helpers =======
+  async function searchProducts(term) {
+    const r = await fetch(`/owner/api/search_products/?q=${encodeURIComponent(term)}`, {
+      headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`HTTP ${r.status} en búsqueda: ${t.slice(0,120)}`);
+    }
+    return r.json();
+  }
+  async function getVariants(pid) {
+    const r = await fetch(`/owner/api/product/${pid}/variants/`, {
+      headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`HTTP ${r.status} en variantes: ${t.slice(0,120)}`);
+    }
+    return r.json();
+  }
+  async function postIntake(payload) {
+    const r = await fetch(`/owner/api/stock_intake/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrftoken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`HTTP ${r.status} en guardar ingreso: ${t.slice(0,200)}`);
+    }
+    return r.json();
+  }
+  async function createProduct(payload) {
+    const r = await fetch(`/owner/api/product_create/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrftoken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`HTTP ${r.status} en crear producto: ${t.slice(0,200)}`);
+    }
+    return r.json();
+  }
+
+  // ======= TYPEAHEAD =======
+  const typeahead = document.getElementById('typeahead');
+  let taItems = [];
+  let taIndex = -1;
+
+  function hideTypeahead(){
+    typeahead.style.display = 'none';
+    typeahead.innerHTML = '';
+    taItems = [];
+    taIndex = -1;
+  }
+
+  function showTypeahead(results){
+    typeahead.innerHTML = '';
+    taItems = (results || []).slice(0, 20);
+
+    if (!taItems.length){
+      const empty = document.createElement('div');
+      empty.className = 'dropdown-item text-muted';
+      empty.textContent = 'Sin resultados';
+      typeahead.appendChild(empty);
+    } else {
+      taItems.forEach((p, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dropdown-item d-flex align-items-center gap-2';
+        btn.innerHTML = `
+          <img src="${p.thumb || 'https://via.placeholder.com/44?text=%E2%80%94'}"
+               class="rounded" style="width:36px;height:36px;object-fit:cover;"
+               onerror="this.src='https://via.placeholder.com/36?text=%E2%80%94'">
+          <div class="text-start">
+            <div><strong>${p.sku || '(sin SKU)'}</strong>
+              <span class="badge text-bg-light ms-2">$ ${p.base_price}</span>
+            </div>
+            <div class="text-muted small">${p.public_name || ''}</div>
+          </div>
+        `;
+        btn.addEventListener('mousedown', (ev) => {
+          ev.preventDefault();
+          chooseIndex(i);
+        });
+        typeahead.appendChild(btn);
+      });
+    }
+    typeahead.style.display = 'block';
+    taIndex = -1;
+    highlightIndex(taIndex);
+  }
+
+  function highlightIndex(idx){
+    const children = [...typeahead.querySelectorAll('.dropdown-item')];
+    children.forEach((el, i) => {
+      el.classList.toggle('active', i === idx && taItems.length > 0);
+    });
+  }
+
+  function ensureVisible(idx){
+    const children = typeahead.querySelectorAll('.dropdown-item');
+    if (idx < 0 || idx >= children.length) return;
+    const el = children[idx];
+    const cTop = typeahead.scrollTop;
+    const cBot = cTop + typeahead.clientHeight;
+    const eTop = el.offsetTop;
+    const eBot = eTop + el.offsetHeight;
+    if (eTop < cTop)      typeahead.scrollTop = eTop;
+    else if (eBot > cBot) typeahead.scrollTop = eBot - typeahead.clientHeight;
+  }
+
+  function chooseIndex(idx){
+    if (idx < 0 || idx >= taItems.length) return;
+    const p = taItems[idx];
+    hideTypeahead();
+    q.value = p.sku || p.public_name || '';
+    selectProduct(p);
+  }
+
+  // debounce
+  let timer = null;
+  async function doSearch(term){
+    if (!term) { hideTypeahead(); return; }
+    try {
+      const data = await searchProducts(term);
+      showTypeahead(data.results || []);
+      hideStatus(); // por si había un error previo
+    } catch (e) {
+      console.error(e);
+      typeahead.innerHTML = '<div class="dropdown-item text-danger">Error buscando…</div>';
+      typeahead.style.display = 'block';
+      showStatus(e.message, 'alert-danger');
+    }
+  }
+
+  // input y botón
+  q.addEventListener('input', () => {
+    const term = q.value.trim();
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => doSearch(term), 180);
+  });
+
+  btnSearch.addEventListener('click', () => {
+    const term = q.value.trim();
+    if (term) doSearch(term);
+    q.focus();
+  });
+
+  // teclado
+  q.addEventListener('keydown', (ev) => {
+    if (typeahead.style.display === 'none') {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        const term = q.value.trim();
+        if (term) doSearch(term);
+      }
+      return;
+    }
+    const key = ev.key;
+    const max = taItems.length - 1;
+    if (key === 'ArrowDown'){
+      ev.preventDefault();
+      taIndex = Math.min(max, taIndex + 1);
+      highlightIndex(taIndex);
+      ensureVisible(taIndex);
+    } else if (key === 'ArrowUp'){
+      ev.preventDefault();
+      taIndex = Math.max(-1, taIndex - 1);
+      highlightIndex(taIndex);
+      ensureVisible(taIndex);
+    } else if (key === 'Enter'){
+      ev.preventDefault();
+      if (taIndex >= 0) chooseIndex(taIndex);
+      else if (taItems.length > 0) chooseIndex(0);
+      else hideTypeahead();
+    } else if (key === 'Escape'){
+      hideTypeahead();
+    }
+  });
+
+  // click fuera
+  document.addEventListener('click', (ev) => {
+    if (!typeahead.contains(ev.target) && ev.target !== q){
+      hideTypeahead();
+    }
+  });
+
+  // Enfocar: mostrar sugerencias si ya hay término
+  q.addEventListener('focus', () => {
+    if (q.value.trim()) doSearch(q.value.trim());
+  });
+
+  // ======= Selección de producto / variantes =======
+  async function selectProduct(p){
+    currentProduct = p;
+    currentVariantId = null;
+    productBox.classList.remove('d-none');
+    pTitle.textContent = p.public_name || p.sku || '(sin nombre)';
+    pSku.textContent = p.sku || '(sin SKU)';
+    pThumb.src = p.thumb || 'https://via.placeholder.com/64?text=%E2%80%94';
+    variantsDiv.innerHTML = '';
+    stockNow.textContent = '';
+    qtyBox.classList.add('d-none');
+    msg.textContent = '';
+
+    try{
+      const data = await getVariants(p.id);
+      data.variants.forEach(v => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'btn btn-sm btn-outline-secondary';
+        pill.textContent = `${v.label} — stock: ${v.stock}`;
+        pill.onclick = () => {
+          [...variantsDiv.children].forEach(c => c.classList.remove('active'));
+          pill.classList.add('active');
+          currentVariantId = v.id;
+          stockNow.textContent = `Stock actual de "${v.label}": ${v.stock}`;
+          qtyBox.classList.remove('d-none');
+        };
+        variantsDiv.appendChild(pill);
+      });
+      hideStatus();
+    } catch(e){
+      console.error(e);
+      showStatus(e.message, 'alert-danger');
+    }
+  }
+
+  // ======= Guardar ingreso =======
+  async function saveIntake() {
+    msg.textContent = '';
+    msg.className = 'form-text';
+    if (!currentProduct) { msg.textContent = 'Elegí un producto.'; return; }
+    if (currentVariantId === undefined || currentVariantId === null) { msg.textContent = 'Elegí una variante.'; return; }
+    const qty = parseInt(qtyInput.value || '0', 10);
+    if (!qty || isNaN(qty)) { msg.textContent = 'Cantidad inválida.'; return; }
+
+    const payload = {
+      product_id: currentProduct.id,
+      variant_id: currentVariantId,
+      qty: qty,
+      unit_cost: unitCost.value || '0',
+      note: note.value || ''
+    };
+    try {
+      const out = await postIntake(payload);
+      msg.className = 'form-text text-success';
+      msg.textContent = `Ingreso guardado. Nuevo stock: ${out.new_stock}.`;
+      qtyInput.value = '1'; unitCost.value = ''; note.value = '';
+
+      // refrescar variantes
+      const data = await getVariants(currentProduct.id);
+      variantsDiv.innerHTML = '';
+      data.variants.forEach(v => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'btn btn-sm btn-outline-secondary';
+        pill.textContent = `${v.label} — stock: ${v.stock}`;
+        pill.onclick = () => {
+          [...variantsDiv.children].forEach(c => c.classList.remove('active'));
+          pill.classList.add('active');
+          currentVariantId = v.id;
+          stockNow.textContent = `Stock actual de "${v.label}": ${v.stock}`;
+          qtyBox.classList.remove('d-none');
+        };
+        variantsDiv.appendChild(pill);
+      });
+      hideStatus();
+    } catch (e) {
+      console.error(e);
+      msg.className = 'form-text text-danger';
+      msg.textContent = 'Error: ' + ('' + e.message).slice(0, 200);
+      showStatus(e.message, 'alert-danger');
+    }
+  }
+
+  // Click del botón
+  saveBtn.addEventListener('click', saveIntake);
+
+  // Enter en qty / unit_cost / note → guardar
+  ['qty', 'unit_cost', 'note'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        saveIntake();
+      }
+    });
+  });
+
+  // ======= Crear producto (alta rápida) =======
+  btnCreateProduct.addEventListener('click', async () => {
+    npMsg.textContent = '';
+    npMsg.className = 'form-text';
+
+    const payload = {
+      sku: npSku.value.trim(),
+      public_name: npPublicName.value.trim(),
+      base_price: npBasePrice.value.trim(),
+      description: npDesc.value.trim(),
+      active: npActive.checked,
+      variant: {
+        color: nvColor.value.trim(),
+        size: nvSize.value.trim(),
+        sku: nvSku.value.trim(),
+        stock: parseInt(nvStock.value || '0', 10)
+      }
+    };
+    try {
+      const out = await createProduct(payload);
+      npMsg.className = 'form-text text-success';
+      npMsg.textContent = 'Producto creado correctamente.';
+      // seleccionar y mostrar
+      selectProduct(out.product);
+      // limpiar form
+      npSku.value=''; npPublicName.value=''; npBasePrice.value=''; npDesc.value=''; npActive.checked=true;
+      nvColor.value=''; nvSize.value=''; nvSku.value=''; nvStock.value='0';
+      hideStatus();
+    } catch (e) {
+      console.error(e);
+      npMsg.className = 'form-text text-danger';
+      npMsg.textContent = ('' + e.message).slice(0, 200);
+      showStatus(e.message, 'alert-danger');
+    }
+  });
+
+  // Enter en “Alta rápida” → crear producto
+  const newProductForm = document.getElementById('newProductForm');
+  newProductForm.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    btnCreateProduct.click();
+  });
+  newProductForm.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      btnCreateProduct.click();
+    }
+  });
+
+  // ======= Ping rápido (debug opcional) =======
+  console.log('Stock Intake UI listo. CSRF:', csrftoken ? '(ok)' : '(vacío)');
+});
+</script>
+{% endblock %}

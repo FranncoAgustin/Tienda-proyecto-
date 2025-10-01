@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Gestionar producto{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h5 mb-0">
+      Gestionar producto
+      {% if product %}
+        <small class="text-muted">· {{ product.public_name|default:product.sku }}</small>
+      {% endif %}
+    </h1>
+    <div class="btn-group">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_dashboard' %}">← Volver al panel</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_bitacora' %}">📜 Bitácora</a>
+      <a class="btn btn-sm btn-primary" href="{% url 'owner_stock_intake_ui' %}">➕ Ingresar stock</a>
+      {% if product %}
+        <a class="btn btn-sm btn-outline-dark" href="{% url 'product_detail' sku=product.sku %}" target="_blank">Ver en tienda</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+    {% csrf_token %}
+
+    <div class="row g-3">
+      <!-- Columna izquierda: datos básicos -->
+      <div class="col-12 col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-header">Datos del producto</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">SKU</label>
+              {{ form.sku }}
+              {% for e in form.sku.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nombre público</label>
+              {{ form.public_name }}
+              {% for e in form.public_name.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Descripción</label>
+              {{ form.description }}
+              {% for e in form.description.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="row">
+              <div class="col-6 mb-3">
+                <label class="form-label">Precio base</label>
+                {{ form.base_price }}
+                {% for e in form.base_price.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-6 mb-3 d-flex align-items-end">
+                <div class="form-check">
+                  {{ form.active }}
+                  <label class="form-check-label">Activo</label>
+                </div>
+                {% for e in form.active.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna derecha: imágenes y variantes -->
+      <div class="col-12 col-lg-7">
+
+        <!-- Imágenes -->
+        <div class="card shadow-sm mb-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Imágenes del producto</span>
+            <button class="btn btn-sm btn-outline-primary" type="button" id="add-image-btn">Añadir imagen</button>
+          </div>
+          <div class="card-body">
+            {{ imgformset.management_form }}
+            <div id="images-forms" data-prefix="{{ imgformset.prefix }}">
+              {% for f in imgformset.forms %}
+              <div class="border rounded p-2 mb-2 image-form">
+                <div class="row g-2 align-items-center">
+                  <div class="col-md-5">
+                    <label class="form-label mb-0 small">Archivo</label>
+                    {{ f.image }}
+                    {% if f.instance.pk and f.instance.image %}
+                      <div class="form-text mt-1">
+                        <img src="{{ f.instance.image.url }}" style="height:60px;object-fit:cover;border-radius:6px;">
+                      </div>
+                    {% endif %}
+                    {% for e in f.image.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label mb-0 small">Alt</label>
+                    {{ f.alt_text }}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label mb-0 small">Orden</label>
+                    {{ f.order }}
+                  </div>
+                  <div class="col-md-1 text-end">
+                    {% if f.DELETE %}
+                      <label class="form-label mb-0 small d-block">&nbsp;</label>
+                      <div class="form-check">
+                        {{ f.DELETE }}
+                        <label class="form-check-label small">Borrar</label>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+
+            <template id="image-empty-form">
+              <div class="border rounded p-2 mb-2 image-form">
+                <div class="row g-2 align-items-center">
+                  <div class="col-md-5">
+                    <label class="form-label mb-0 small">Archivo</label>
+                    {{ imgformset.empty_form.image }}
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label mb-0 small">Alt</label>
+                    {{ imgformset.empty_form.alt_text }}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label mb-0 small">Orden</label>
+                    {{ imgformset.empty_form.order }}
+                  </div>
+                  <div class="col-md-1"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Variantes -->
+        <div class="card shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Variantes</span>
+            <button class="btn btn-sm btn-outline-primary" type="button" id="add-variant-btn">Añadir variante</button>
+          </div>
+          <div class="card-body">
+            {{ vformset.management_form }}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:18%;">Color</th>
+                    <th style="width:14%;">Talle</th>
+                    <th>Imagen</th>
+                    <th style="width:12%;">Stock</th>
+                    <th style="width:15%;">Precio override</th>
+                    <th style="width:10%;">Activa</th>
+                    <th style="width:10%;">Borrar</th>
+                  </tr>
+                </thead>
+                <tbody id="variants-forms" data-prefix="{{ vformset.prefix }}">
+                  {% for f in vformset.forms %}
+                  <tr class="variant-form">
+                    <td>
+                      {{ f.color }}
+                      {% for e in f.color.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+                    </td>
+                    <td>{{ f.size }}</td>
+                    <td>
+                      {{ f.image }}
+                      {% if f.instance.pk and f.instance.image %}
+                        <div class="form-text">
+                          <img src="{{ f.instance.image.url }}" style="height:40px;object-fit:cover;border-radius:6px;">
+                        </div>
+                      {% endif %}
+                    </td>
+                    <td style="max-width:100px;">{{ f.stock }}</td>
+                    <td style="max-width:150px;">{{ f.price_override }}</td>
+                    <td class="text-center">
+                      <div class="form-check">{{ f.active }}</div>
+                    </td>
+                    <td class="text-center">
+                      {% if f.DELETE %}
+                        <div class="form-check">{{ f.DELETE }}</div>
+                      {% endif %}
+                    </td>
+                    {{ f.id }}
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <template id="variant-empty-row">
+              <tr class="variant-form">
+                <td>{{ vformset.empty_form.color }}</td>
+                <td>{{ vformset.empty_form.size }}</td>
+                <td>{{ vformset.empty_form.image }}</td>
+                <td style="max-width:100px;">{{ vformset.empty_form.stock }}</td>
+                <td style="max-width:150px;">{{ vformset.empty_form.price_override }}</td>
+                <td class="text-center"><div class="form-check">{{ vformset.empty_form.active }}</div></td>
+                <td></td>
+              </tr>
+            </template>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <button class="btn btn-secondary" type="submit" name="stay" value="1">Guardar</button>
+      <button class="btn btn-primary" type="submit">Guardar y volver</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function addForm(rowContainerId, tmplId) {
+    const container = document.getElementById(rowContainerId);
+    const tmpl = document.getElementById(tmplId);
+    const prefix = container.getAttribute('data-prefix');
+    const totalEl = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    const index = parseInt(totalEl.value, 10);
+    let html = tmpl.innerHTML.replaceAll('__prefix__', index.toString());
+    container.insertAdjacentHTML('beforeend', html);
+    totalEl.value = index + 1;
+  }
+  document.getElementById('add-image-btn').addEventListener('click', function(){ addForm('images-forms','image-empty-form'); });
+  document.getElementById('add-variant-btn').addEventListener('click', function(){ addForm('variants-forms','variant-empty-row'); });
+</script>
+{% endblock %}

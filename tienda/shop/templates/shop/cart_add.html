@@ -1,0 +1,1 @@
+<html><body><h1>Carrito</h1>{% for it in items %}<div>{{it.name}} x {{it.qty}} = ${{it.subtotal}}</div>{% empty %}Vacío{% endfor %}<div>Total ${{total}}</div>{% if items %}<a href='/checkout/'>Pagar</a>{% endif %}</body></html>

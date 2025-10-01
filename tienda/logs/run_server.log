@@ -1,0 +1,462 @@
+[2025-09-24 14:22:37] $ D:\Descargas-H\programacion_2025_2\tienda\.venv\Scripts\python.exe -m pip show django
+[2025-09-24 14:22:37] Name: Django
+Version: 5.2.6
+Summary: A high-level Python web framework that encourages rapid development and clean, pragmatic design.
+Home-page: https://www.djangoproject.com/
+Author: 
+Author-email: Django Software Foundation <foundation@djangoproject.com>
+License: BSD-3-Clause
+Location: D:\Descargas-H\programacion_2025_2\tienda\.venv\Lib\site-packages
+Requires: asgiref, sqlparse, tzdata
+Required-by:
+[2025-09-24 14:22:37] $ D:\Descargas-H\programacion_2025_2\tienda\.venv\Scripts\python.exe -m pip show Pillow
+[2025-09-24 14:22:38] Name: pillow
+Version: 11.3.0
+Summary: Python Imaging Library (Fork)
+Home-page: https://python-pillow.github.io
+Author: 
+Author-email: "Jeffrey A. Clark" <aclark@aclark.net>
+License-Expression: MIT-CMU
+Location: D:\Descargas-H\programacion_2025_2\tienda\.venv\Lib\site-packages
+Requires: 
+Required-by:
+[2025-09-24 14:22:38] $ D:\Descargas-H\programacion_2025_2\tienda\.venv\Scripts\python.exe -m pip show mercadopago
+[2025-09-24 14:22:38] Name: mercadopago
+Version: 2.3.0
+Summary: Mercadopago SDK module for Payments integration
+Home-page: https://mercadopago.com
+Author: 
+Author-email: Mercado Pago <mp_sdk@mercadopago.com>
+License: MIT License
+
+Copyright (c) 2021 MercadoPago Developers
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+Location: D:\Descargas-H\programacion_2025_2\tienda\.venv\Lib\site-packages
+Requires: requests
+Required-by:
+[2025-09-24 14:22:38] $ D:\Descargas-H\programacion_2025_2\tienda\.venv\Scripts\python.exe -m pip show pdfminer.six
+[2025-09-24 14:22:39] Name: pdfminer.six
+Version: 20250506
+Summary: PDF parser and analyzer
+Home-page: https://github.com/pdfminer/pdfminer.six
+Author: Yusuke Shinyama, Pieter Marsman
+Author-email: Philippe Guglielmetti <pdfminer@goulu.net>
+License-Expression: MIT
+Location: D:\Descargas-H\programacion_2025_2\tienda\.venv\Lib\site-packages
+Requires: charset-normalizer, cryptography
+Required-by:
+[2025-09-24 14:22:39] $ D:\Descargas-H\programacion_2025_2\tienda\.venv\Scripts\python.exe manage.py check
+[2025-09-24 14:22:39] $ D:\Descargas-H\programacion_2025_2\tienda\.venv\Scripts\python.exe manage.py showmigrations --plan
+[2025-09-24 14:22:40] [X]  contenttypes.0001_initial
+[X]  auth.0001_initial
+[X]  admin.0001_initial
+[X]  admin.0002_logentry_remove_auto_add
+[X]  admin.0003_logentry_add_action_flag_choices
+[X]  contenttypes.0002_remove_content_type_name
+[X]  auth.0002_alter_permission_name_max_length
+[X]  auth.0003_alter_user_email_max_length
+[X]  auth.0004_alter_user_username_opts
+[X]  auth.0005_alter_user_last_login_null
+[X]  auth.0006_require_contenttypes_0002
+[X]  auth.0007_alter_validators_add_error_messages
+[X]  auth.0008_alter_user_username_max_length
+[X]  auth.0009_alter_user_last_name_max_length
+[X]  auth.0010_alter_group_name_max_length
+[X]  auth.0011_update_proxy_permissions
+[X]  auth.0012_alter_user_first_name_max_length
+[X]  sessions.0001_initial
+[X]  shop.0001_initial
+[2025-09-24 14:22:40] Sin migraciones pendientes.
+[2025-09-24 14:22:40] $ D:\Descargas-H\programacion_2025_2\tienda\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+[2025-09-24 14:59:48] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show django
+[2025-09-24 14:59:50] Name: Django
+Version: 5.2.6
+Summary: A high-level Python web framework that encourages rapid development and clean, pragmatic design.
+Home-page: https://www.djangoproject.com/
+Author: 
+Author-email: Django Software Foundation <foundation@djangoproject.com>
+License: BSD-3-Clause
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: asgiref, sqlparse, tzdata
+Required-by:
+[2025-09-24 14:59:50] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show Pillow
+[2025-09-24 14:59:51] Name: pillow
+Version: 11.3.0
+Summary: Python Imaging Library (Fork)
+Home-page: https://python-pillow.github.io
+Author: 
+Author-email: "Jeffrey A. Clark" <aclark@aclark.net>
+License-Expression: MIT-CMU
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: 
+Required-by:
+[2025-09-24 14:59:51] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show mercadopago
+[2025-09-24 14:59:52] Name: mercadopago
+Version: 2.3.0
+Summary: Mercadopago SDK module for Payments integration
+Home-page: https://mercadopago.com
+Author: 
+Author-email: Mercado Pago <mp_sdk@mercadopago.com>
+License: MIT License
+
+Copyright (c) 2021 MercadoPago Developers
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: requests
+Required-by:
+[2025-09-24 14:59:52] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show pdfminer.six
+[2025-09-24 14:59:53] Name: pdfminer.six
+Version: 20250506
+Summary: PDF parser and analyzer
+Home-page: https://github.com/pdfminer/pdfminer.six
+Author: Yusuke Shinyama, Pieter Marsman
+Author-email: Philippe Guglielmetti <pdfminer@goulu.net>
+License-Expression: MIT
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: charset-normalizer, cryptography
+Required-by:
+[2025-09-24 14:59:53] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py check
+[2025-09-24 14:59:59] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py showmigrations --plan
+[2025-09-24 15:00:04] [X]  contenttypes.0001_initial
+[X]  auth.0001_initial
+[X]  admin.0001_initial
+[X]  admin.0002_logentry_remove_auto_add
+[X]  admin.0003_logentry_add_action_flag_choices
+[X]  contenttypes.0002_remove_content_type_name
+[X]  auth.0002_alter_permission_name_max_length
+[X]  auth.0003_alter_user_email_max_length
+[X]  auth.0004_alter_user_username_opts
+[X]  auth.0005_alter_user_last_login_null
+[X]  auth.0006_require_contenttypes_0002
+[X]  auth.0007_alter_validators_add_error_messages
+[X]  auth.0008_alter_user_username_max_length
+[X]  auth.0009_alter_user_last_name_max_length
+[X]  auth.0010_alter_group_name_max_length
+[X]  auth.0011_update_proxy_permissions
+[X]  auth.0012_alter_user_first_name_max_length
+[X]  sessions.0001_initial
+[X]  shop.0001_initial
+[2025-09-24 15:00:04] Sin migraciones pendientes.
+[2025-09-24 15:00:04] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+[2025-09-24 15:43:43] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show django
+[2025-09-24 15:43:45] Name: Django
+Version: 5.2.6
+Summary: A high-level Python web framework that encourages rapid development and clean, pragmatic design.
+Home-page: https://www.djangoproject.com/
+Author: 
+Author-email: Django Software Foundation <foundation@djangoproject.com>
+License: BSD-3-Clause
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: asgiref, sqlparse, tzdata
+Required-by:
+[2025-09-24 15:43:45] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show Pillow
+[2025-09-24 15:43:46] Name: pillow
+Version: 11.3.0
+Summary: Python Imaging Library (Fork)
+Home-page: https://python-pillow.github.io
+Author: 
+Author-email: "Jeffrey A. Clark" <aclark@aclark.net>
+License-Expression: MIT-CMU
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: 
+Required-by:
+[2025-09-24 15:43:46] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show mercadopago
+[2025-09-24 15:43:47] Name: mercadopago
+Version: 2.3.0
+Summary: Mercadopago SDK module for Payments integration
+Home-page: https://mercadopago.com
+Author: 
+Author-email: Mercado Pago <mp_sdk@mercadopago.com>
+License: MIT License
+
+Copyright (c) 2021 MercadoPago Developers
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: requests
+Required-by:
+[2025-09-24 15:43:47] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show pdfminer.six
+[2025-09-24 15:43:48] Name: pdfminer.six
+Version: 20250506
+Summary: PDF parser and analyzer
+Home-page: https://github.com/pdfminer/pdfminer.six
+Author: Yusuke Shinyama, Pieter Marsman
+Author-email: Philippe Guglielmetti <pdfminer@goulu.net>
+License-Expression: MIT
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: charset-normalizer, cryptography
+Required-by:
+[2025-09-24 15:43:48] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py check
+[2025-09-24 15:43:52] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py showmigrations --plan
+[2025-09-24 15:43:57] [X]  contenttypes.0001_initial
+[X]  auth.0001_initial
+[X]  admin.0001_initial
+[X]  admin.0002_logentry_remove_auto_add
+[X]  admin.0003_logentry_add_action_flag_choices
+[X]  contenttypes.0002_remove_content_type_name
+[X]  auth.0002_alter_permission_name_max_length
+[X]  auth.0003_alter_user_email_max_length
+[X]  auth.0004_alter_user_username_opts
+[X]  auth.0005_alter_user_last_login_null
+[X]  auth.0006_require_contenttypes_0002
+[X]  auth.0007_alter_validators_add_error_messages
+[X]  auth.0008_alter_user_username_max_length
+[X]  auth.0009_alter_user_last_name_max_length
+[X]  auth.0010_alter_group_name_max_length
+[X]  auth.0011_update_proxy_permissions
+[X]  auth.0012_alter_user_first_name_max_length
+[X]  sessions.0001_initial
+[X]  shop.0001_initial
+[X]  shop.0002_remove_product_image_alter_product_base_price_and_more
+[2025-09-24 15:43:57] Sin migraciones pendientes.
+[2025-09-24 15:43:57] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+[2025-09-24 17:00:39] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show django
+[2025-09-24 17:00:42] ERROR (103): No Python at '"C:\Users\Franck\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe'
+[2025-09-24 17:00:42] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show Pillow
+[2025-09-24 17:00:42] ERROR (103): No Python at '"C:\Users\Franck\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe'
+[2025-09-24 17:00:42] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show mercadopago
+[2025-09-24 17:00:42] ERROR (103): No Python at '"C:\Users\Franck\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe'
+[2025-09-24 17:00:42] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show pdfminer.six
+[2025-09-24 17:00:42] ERROR (103): No Python at '"C:\Users\Franck\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe'
+[2025-09-24 17:00:42] Faltan dependencias: django, Pillow, mercadopago, pdfminer.six
+[2025-09-24 17:00:42] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip install django Pillow mercadopago pdfminer.six
+[2025-09-24 17:00:42] No se pudieron instalar automáticamente.
+[2025-09-24 17:00:42] Instalá manualmente: H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip install django Pillow mercadopago pdfminer.six
+[2025-09-24 17:13:57] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show django
+[2025-09-24 17:13:58] ERROR (103): No Python at '"C:\Users\Franck\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe'
+[2025-09-24 17:13:58] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show Pillow
+[2025-09-24 17:13:58] ERROR (103): No Python at '"C:\Users\Franck\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe'
+[2025-09-24 17:13:58] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show mercadopago
+[2025-09-24 17:13:58] ERROR (103): No Python at '"C:\Users\Franck\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe'
+[2025-09-24 17:13:58] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show pdfminer.six
+[2025-09-24 17:13:58] ERROR (103): No Python at '"C:\Users\Franck\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe'
+[2025-09-24 17:13:58] Faltan dependencias: django, Pillow, mercadopago, pdfminer.six
+[2025-09-24 17:13:58] $ H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip install django Pillow mercadopago pdfminer.six
+[2025-09-24 17:13:58] No se pudieron instalar automáticamente.
+[2025-09-24 17:13:58] Instalá manualmente: H:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip install django Pillow mercadopago pdfminer.six
+[2025-09-24 22:38:52] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show django
+[2025-09-24 22:38:56] Name: Django
+Version: 5.2.6
+Summary: A high-level Python web framework that encourages rapid development and clean, pragmatic design.
+Home-page: https://www.djangoproject.com/
+Author: 
+Author-email: Django Software Foundation <foundation@djangoproject.com>
+License: BSD-3-Clause
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: asgiref, sqlparse, tzdata
+Required-by:
+[2025-09-24 22:38:56] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show Pillow
+[2025-09-24 22:38:57] Name: pillow
+Version: 11.3.0
+Summary: Python Imaging Library (Fork)
+Home-page: https://python-pillow.github.io
+Author: 
+Author-email: "Jeffrey A. Clark" <aclark@aclark.net>
+License-Expression: MIT-CMU
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: 
+Required-by:
+[2025-09-24 22:38:57] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show mercadopago
+[2025-09-24 22:38:58] Name: mercadopago
+Version: 2.3.0
+Summary: Mercadopago SDK module for Payments integration
+Home-page: https://mercadopago.com
+Author: 
+Author-email: Mercado Pago <mp_sdk@mercadopago.com>
+License: MIT License
+
+Copyright (c) 2021 MercadoPago Developers
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: requests
+Required-by:
+[2025-09-24 22:38:58] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show pdfminer.six
+[2025-09-24 22:38:59] Name: pdfminer.six
+Version: 20250506
+Summary: PDF parser and analyzer
+Home-page: https://github.com/pdfminer/pdfminer.six
+Author: Yusuke Shinyama, Pieter Marsman
+Author-email: Philippe Guglielmetti <pdfminer@goulu.net>
+License-Expression: MIT
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: charset-normalizer, cryptography
+Required-by:
+[2025-09-24 22:38:59] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py check
+[2025-09-24 22:39:04] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py showmigrations --plan
+[2025-09-24 22:39:08] [X]  contenttypes.0001_initial
+[X]  auth.0001_initial
+[X]  admin.0001_initial
+[X]  admin.0002_logentry_remove_auto_add
+[X]  admin.0003_logentry_add_action_flag_choices
+[X]  contenttypes.0002_remove_content_type_name
+[X]  auth.0002_alter_permission_name_max_length
+[X]  auth.0003_alter_user_email_max_length
+[X]  auth.0004_alter_user_username_opts
+[X]  auth.0005_alter_user_last_login_null
+[X]  auth.0006_require_contenttypes_0002
+[X]  auth.0007_alter_validators_add_error_messages
+[X]  auth.0008_alter_user_username_max_length
+[X]  auth.0009_alter_user_last_name_max_length
+[X]  auth.0010_alter_group_name_max_length
+[X]  auth.0011_update_proxy_permissions
+[X]  auth.0012_alter_user_first_name_max_length
+[X]  sessions.0001_initial
+[X]  shop.0001_initial
+[X]  shop.0002_remove_product_image_alter_product_base_price_and_more
+[2025-09-24 22:39:08] Sin migraciones pendientes.
+[2025-09-24 22:39:08] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+[2025-09-29 18:57:19] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show django
+[2025-09-29 18:57:22] Name: Django
+Version: 5.2.6
+Summary: A high-level Python web framework that encourages rapid development and clean, pragmatic design.
+Home-page: https://www.djangoproject.com/
+Author: 
+Author-email: Django Software Foundation <foundation@djangoproject.com>
+License: BSD-3-Clause
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: asgiref, sqlparse, tzdata
+Required-by:
+[2025-09-29 18:57:22] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show Pillow
+[2025-09-29 18:57:23] Name: pillow
+Version: 11.3.0
+Summary: Python Imaging Library (Fork)
+Home-page: https://python-pillow.github.io
+Author: 
+Author-email: "Jeffrey A. Clark" <aclark@aclark.net>
+License-Expression: MIT-CMU
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: 
+Required-by:
+[2025-09-29 18:57:23] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show mercadopago
+[2025-09-29 18:57:24] Name: mercadopago
+Version: 2.3.0
+Summary: Mercadopago SDK module for Payments integration
+Home-page: https://mercadopago.com
+Author: 
+Author-email: Mercado Pago <mp_sdk@mercadopago.com>
+License: MIT License
+
+Copyright (c) 2021 MercadoPago Developers
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: requests
+Required-by:
+[2025-09-29 18:57:24] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe -m pip show pdfminer.six
+[2025-09-29 18:57:25] Name: pdfminer.six
+Version: 20250506
+Summary: PDF parser and analyzer
+Home-page: https://github.com/pdfminer/pdfminer.six
+Author: Yusuke Shinyama, Pieter Marsman
+Author-email: Philippe Guglielmetti <pdfminer@goulu.net>
+License-Expression: MIT
+Location: G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Lib\site-packages
+Requires: charset-normalizer, cryptography
+Required-by:
+[2025-09-29 18:57:25] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py check
+[2025-09-29 18:57:33] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py showmigrations --plan
+[2025-09-29 18:57:37] [X]  contenttypes.0001_initial
+[X]  auth.0001_initial
+[X]  admin.0001_initial
+[X]  admin.0002_logentry_remove_auto_add
+[X]  admin.0003_logentry_add_action_flag_choices
+[X]  contenttypes.0002_remove_content_type_name
+[X]  auth.0002_alter_permission_name_max_length
+[X]  auth.0003_alter_user_email_max_length
+[X]  auth.0004_alter_user_username_opts
+[X]  auth.0005_alter_user_last_login_null
+[X]  auth.0006_require_contenttypes_0002
+[X]  auth.0007_alter_validators_add_error_messages
+[X]  auth.0008_alter_user_username_max_length
+[X]  auth.0009_alter_user_last_name_max_length
+[X]  auth.0010_alter_group_name_max_length
+[X]  auth.0011_update_proxy_permissions
+[X]  auth.0012_alter_user_first_name_max_length
+[X]  sessions.0001_initial
+[X]  shop.0001_initial
+[X]  shop.0002_remove_product_image_alter_product_base_price_and_more
+[2025-09-29 18:57:37] Sin migraciones pendientes.
+[2025-09-29 18:57:37] $ G:\Otros ordenadores\Mi PC(1)\Creality\PaginaWEB\tienda\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
