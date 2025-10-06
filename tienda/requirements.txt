@@ -2,3 +2,5 @@ Django>=5.0,<6.0
 mercadopago>=2.2,<3.0
 pdfminer.six>=20220524
 Pillow>=10.0
+python-telegram-bot>=20,<22
+reportlab>=3.6.12

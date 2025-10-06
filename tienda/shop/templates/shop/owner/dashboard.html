@@ -5,33 +5,84 @@
 {% block content %}
 <div class="container-fluid">
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
+  <!-- Encabezado -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
     <h1 class="h5 mb-0">Inventario</h1>
     <div class="btn-group">
-      <a class="btn btn-sm btn-primary" href="{% url 'owner_stock_intake_ui' %}">➕ Ingresar stock</a>
-      <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_bitacora' %}">📜 Bitácora</a>
-      <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_import_pdf' %}">📄 Importar PDF</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'catalog' %}" target="_blank">🛍️ Ver tienda</a>
+<a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_export_pdf_ui' %}">📥 Exportar PDF</a>
     </div>
   </div>
 
-  <form class="mb-3" method="get">
+  <!-- Acciones rápidas -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="btn-toolbar gap-2" role="toolbar" aria-label="Toolbar with button groups">
+        <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Acciones Owner">
+          <a class="btn btn-primary" href="{% url 'owner_stock_intake_ui' %}">➕ Ingresar stock (UI)</a>
+          <a class="btn btn-outline-secondary" href="{% url 'owner_bitacora' %}">📜 Bitácora</a>
+          <a class="btn btn-outline-secondary" href="{% url 'owner_bulk_pricing' %}">💹 Precios masivos</a>
+          <a class="btn btn-sm btn-outline-secondary"
+          <a class="btn btn-outline-secondary" href="{% url 'owner_import_pdf' %}">📄 Importar PDF</a>
+          <!-- Opción de nuevo producto (usa la URL existente). Si tu vista requiere params, podés ocultarla o reemplazarla por el alta rápida de la UI. -->
+          <a class="btn btn-outline-secondary" href="{% url 'product_new' %}">🆕 Nuevo producto</a>
+          <!-- Refrescar dashboard (limpia filtros) -->
+          <a class="btn btn-outline-light border" href="{% url 'owner_dashboard' %}">🔄 Limpiar/Refrescar</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Búsqueda -->
+  <form class="mb-2" method="get">
     <div class="input-group">
       <input type="text" class="form-control" name="q" value="{{ q }}" placeholder="Buscar por nombre o SKU">
+      {% if t %}
+        <input type="hidden" name="t" value="{{ t }}">
+      {% endif %}
       <button class="btn btn-outline-secondary" type="submit">Buscar</button>
-      {% if q %}
+      {% if q or t %}
         <a class="btn btn-outline-light border" href="{% url 'owner_dashboard' %}">Limpiar</a>
       {% endif %}
     </div>
   </form>
 
+  <!-- Filtros por técnica -->
+  {% with tl=t|default:''|lower %}
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-sm {% if not tl %}btn-primary{% else %}btn-outline-primary{% endif %}"
+       href="?{% if q %}q={{ q|urlencode }}&{% endif %}">
+      Todo
+    </a>
+    <a class="btn btn-sm {% if tl == 'sub' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+       href="?{% if q %}q={{ q|urlencode }}&{% endif %}t=sub">
+      Sublimación
+    </a>
+    <a class="btn btn-sm {% if tl == 'laser' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+       href="?{% if q %}q={{ q|urlencode }}&{% endif %}t=laser">
+      Grabado láser
+    </a>
+    <a class="btn btn-sm {% if tl == '3d' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+       href="?{% if q %}q={{ q|urlencode }}&{% endif %}t=3d">
+      Impresión 3D
+    </a>
+    <a class="btn btn-sm {% if tl == 'otr' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+       href="?{% if q %}q={{ q|urlencode }}&{% endif %}t=otr">
+      Otro
+    </a>
+  </div>
+  {% endwith %}
+
+  <!-- Tabla -->
   <div class="table-responsive">
     <table class="table table-hover align-middle">
       <thead class="table-light">
         <tr>
           <th style="width:72px;">Foto</th>
           <th>Producto</th>
+          <th style="width:160px;">Técnica</th>
           <th style="width:140px;" class="text-center">Stock</th>
-          <th style="width:250px;" class="text-end">Acciones</th>
+          <th style="width:300px;" class="text-end">Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -52,6 +103,13 @@
             </div>
             <div class="text-muted small">{{ p.sku }}</div>
           </td>
+          <td>
+            {% if p.tech %}
+              <span class="badge text-bg-light">{{ p.get_tech_display }}</span>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
           <td class="text-center">
             {% if p.total_stock|default:0 > 0 %}
               <span class="badge text-bg-success">{{ p.total_stock }}</span>
@@ -60,15 +118,24 @@
             {% endif %}
           </td>
           <td class="text-end">
-            <div class="btn-group btn-group-sm">
-              <a class="btn btn-outline-primary" href="{% url 'owner_stock_intake_ui' %}">Agregar stock</a>
-              <a class="btn btn-outline-secondary" href="{% url 'product_manage' sku=p.sku %}">Editar</a>
+            <div class="d-flex justify-content-end align-items-center gap-2">
+              <select class="form-select form-select-sm" style="width:12rem"
+                      data-pid="{{ p.id }}" onchange="ownerSetTech(this)">
+                <option value="SUB"{% if p.tech == 'SUB' %} selected{% endif %}>Sublimación</option>
+                <option value="LAS"{% if p.tech == 'LAS' %} selected{% endif %}>Grabado láser</option>
+                <option value="3D"{% if p.tech == '3D' %} selected{% endif %}>Impresión 3D</option>
+                <option value="OTR"{% if p.tech == 'OTR' or not p.tech %} selected{% endif %}>Otro</option>
+              </select>
+              <div class="btn-group btn-group-sm">
+                <a class="btn btn-outline-primary" href="{% url 'owner_stock_intake_ui' %}">Agregar stock</a>
+                <a class="btn btn-outline-secondary" href="{% url 'product_manage' sku=p.sku %}">Editar</a>
+              </div>
             </div>
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="4" class="text-center text-muted py-4">
+          <td colspan="5" class="text-center text-muted py-4">
             No hay productos para mostrar.
           </td>
         </tr>
@@ -77,11 +144,14 @@
     </table>
   </div>
 
+  <!-- Paginación -->
   {% if page_obj.paginator.num_pages > 1 %}
   <nav class="mt-3">
     <ul class="pagination justify-content-center">
       {% if page_obj.has_previous %}
-        <li class="page-item"><a class="page-link" href="?q={{ q }}&page={{ page_obj.previous_page_number }}">«</a></li>
+        <li class="page-item">
+          <a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if t %}t={{ t|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">«</a>
+        </li>
       {% else %}
         <li class="page-item disabled"><span class="page-link">«</span></li>
       {% endif %}
@@ -90,12 +160,16 @@
         {% if num == page_obj.number %}
           <li class="page-item active"><span class="page-link">{{ num }}</span></li>
         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-          <li class="page-item"><a class="page-link" href="?q={{ q }}&page={{ num }}">{{ num }}</a></li>
+          <li class="page-item">
+            <a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if t %}t={{ t|urlencode }}&{% endif %}page={{ num }}">{{ num }}</a>
+          </li>
         {% endif %}
       {% endfor %}
 
       {% if page_obj.has_next %}
-        <li class="page-item"><a class="page-link" href="?q={{ q }}&page={{ page_obj.next_page_number }}">»</a></li>
+        <li class="page-item">
+          <a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if t %}t={{ t|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">»</a>
+        </li>
       {% else %}
         <li class="page-item disabled"><span class="page-link">»</span></li>
       {% endif %}
@@ -104,4 +178,28 @@
   {% endif %}
 
 </div>
+
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  async function ownerSetTech(sel) {
+    const pid = sel.getAttribute('data-pid');
+    const val = sel.value;
+    try {
+      const r = await fetch(`/owner/api/products/${pid}/set_tech/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify({ tech: val })
+      });
+      if (!r.ok) throw new Error(await r.text());
+    } catch (e) {
+      alert('Error guardando técnica: ' + ('' + e.message).slice(0, 200));
+    }
+  }
+</script>
 {% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Exportar PDF{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h5 mb-0">Exportar catálogo en PDF</h1>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_dashboard' %}">← Volver</a>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form action="{% url 'owner_export_pdf' %}" method="get" class="row g-3">
+
+        <!-- Búsqueda -->
+        <div class="col-12 col-md-6">
+          <label class="form-label">Buscar (nombre / SKU / descripción)</label>
+          <input type="text" name="q" class="form-control" value="{{ q|default:'' }}">
+        </div>
+
+        <!-- Filtro por técnica -->
+        <div class="col-12 col-md-6">
+          <label class="form-label">Filtrar por técnica</label>
+          <select name="t" class="form-select">
+            <option value="" {% if not t %}selected{% endif %}>Todas</option>
+            <option value="sub"   {% if t == 'sub' %}selected{% endif %}>Sublimación</option>
+            <option value="laser" {% if t == 'laser' %}selected{% endif %}>Grabado láser</option>
+            <option value="3d"    {% if t == '3d' %}selected{% endif %}>Impresión 3D</option>
+            <option value="otr"   {% if t == 'otr' %}selected{% endif %}>Otro</option>
+          </select>
+        </div>
+
+        <!-- Opciones -->
+        <div class="col-12">
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="show_sku" name="show_sku" value="1" {% if show_sku %}checked{% endif %}>
+            <label class="form-check-label" for="show_sku">Mostrar SKU</label>
+          </div>
+
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="wmark" name="wmark" value="1" {% if wmark %}checked{% endif %}>
+            <label class="form-check-label" for="wmark">Agregar marca de agua</label>
+          </div>
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            📥 Descargar PDF
+          </button>
+          <a class="btn btn-outline-secondary" href="{% url 'owner_dashboard' %}">Cancelar</a>
+        </div>
+      </form>
+
+      <hr class="my-4">
+
+      <div class="small text-muted">
+        <ul class="mb-0">
+          
+          <li>La marca de agua busca el archivo configurado en <code>settings.PDF_WATERMARK_IMAGE</code>.</li>
+          <li>Si marcás una técnica, sólo exporta esa sección.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

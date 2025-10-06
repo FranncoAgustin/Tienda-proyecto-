@@ -41,3 +41,9 @@ class ProductImageForm(forms.ModelForm):
 
 VariantFormSet = inlineformset_factory(Product, Variant, form=VariantForm, extra=1, can_delete=True)
 ProductImageFormSet = inlineformset_factory(Product, ProductImage, form=ProductImageForm, extra=1, can_delete=True)
+
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = "__all__"      # o: ("sku","public_name","description","base_price","tech","active",...)
+        exclude = ("created_at",)

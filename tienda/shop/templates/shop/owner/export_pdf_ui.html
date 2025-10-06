@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Exportar catálogo a PDF{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h5 mb-0">Exportar catálogo a PDF</h1>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_dashboard' %}">← Volver al panel</a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="get" action="{% url 'owner_export_pdf' %}" class="row g-3">
+
+        <!-- Búsqueda -->
+        <div class="col-12 col-md-6">
+          <label class="form-label">Búsqueda (nombre, SKU, descripción)</label>
+          <input type="text" name="q" class="form-control" value="{{ q|default:'' }}">
+        </div>
+
+        <!-- Técnica -->
+        <div class="col-12">
+          <label class="form-label d-block mb-1">Sección / Técnica</label>
+          <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" name="t" id="t_all" value="" {% if not t %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="t_all">Todas</label>
+
+            <input type="radio" class="btn-check" name="t" id="t_sub" value="sub" {% if t == 'sub' %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="t_sub">Sublimación</label>
+
+            <input type="radio" class="btn-check" name="t" id="t_laser" value="laser" {% if t == 'laser' %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="t_laser">Grabado láser</label>
+
+            <input type="radio" class="btn-check" name="t" id="t_3d" value="3d" {% if t == '3d' %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="t_3d">Impresión 3D</label>
+
+            <input type="radio" class="btn-check" name="t" id="t_otr" value="otr" {% if t == 'otr' %}checked{% endif %}>
+            <label class="btn btn-outline-primary" for="t_otr">Otro</label>
+          </div>
+          <div class="form-text">Elegí una sola sección para exportar sólo esa, o "Todas" para agrupar por técnica.</div>
+        </div>
+
+        <!-- Opciones -->
+        <div class="col-12 col-md-6">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="opt_sku" name="sku" value="1" {% if sku|default:'1' == '1' %}checked{% endif %}>
+            <label class="form-check-label" for="opt_sku">Mostrar SKU</label>
+          </div>
+          <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" id="opt_wm" name="wm" value="1" {% if wm|default:'1' == '1' %}checked{% endif %}>
+            <label class="form-check-label" for="opt_wm">Marca de agua (si está configurada)</label>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <button class="btn btn-primary">
+            📥 Exportar PDF
+          </button>
+          <a class="btn btn-outline-secondary" href="{% url 'owner_dashboard' %}">Cancelar</a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <div class="mt-3 small text-muted">
+    Consejo: Podés abrir el PDF en una pestaña nueva (click derecho &gt; abrir en nueva pestaña) para no salir de esta pantalla.
+  </div>
+
+</div>
+{% endblock %}

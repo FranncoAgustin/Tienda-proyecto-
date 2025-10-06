@@ -4,6 +4,25 @@
 {% block title %}Catálogo{% endblock %}
 
 {% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn btn-sm {% if not tech_code %}btn-primary{% else %}btn-outline-primary{% endif %}"
+     href="?{% if q %}q={{ q|urlencode }}&{% endif %}">
+     Todo
+  </a>
+  <a class="btn btn-sm {% if is_sub %}btn-primary{% else %}btn-outline-primary{% endif %}"
+     href="?{% if q %}q={{ q|urlencode }}&{% endif %}t=sub">
+     Sublimación
+  </a>
+  <a class="btn btn-sm {% if is_laser %}btn-primary{% else %}btn-outline-primary{% endif %}"
+     href="?{% if q %}q={{ q|urlencode }}&{% endif %}t=laser">
+     Grabado láser
+  </a>
+  <a class="btn btn-sm {% if is_3d %}btn-primary{% else %}btn-outline-primary{% endif %}"
+     href="?{% if q %}q={{ q|urlencode }}&{% endif %}t=3d">
+     Impresión 3D
+  </a>
+</div>
+
 {% if q %}
 <p class="text-muted">Resultados para “{{ q }}”</p>
 {% endif %}
@@ -12,29 +31,21 @@
   {% for p in products %}
   <div class="col-6 col-md-4 col-lg-3">
     <div class="card h-100 shadow-sm">
-
-      <!-- Miniatura: prioriza imagen de variante (via p.catalog_image_url), si no hay usa primera imagen del producto -->
       <div class="product-thumb" style="aspect-ratio:1/1; overflow:hidden;">
-            {% with img=p.images.first %}
-                {% if img %}
-                    <img src="{{ img.image.url }}" alt="{{ img.alt_text|default:p.public_name }}" style="width:100%; height:100%; object-fit:cover;">
-                        {% else %}
-                            <img src="https://via.placeholder.com/600x600?text=Sin+Imagen" alt="sin imagen" style="width:100%; height:100%; object-fit:cover;">
-                        {% endif %}
-            {% endwith %}
-        </div>
-
+        {% if p.catalog_image_url %}
+          <img src="{{ p.catalog_image_url }}" alt="{{ p.public_name }}" style="width:100%; height:100%; object-fit:cover;">
+        {% else %}
+          <img src="https://via.placeholder.com/600x600?text=Sin+Imagen" alt="sin imagen" style="width:100%; height:100%; object-fit:cover;">
+        {% endif %}
+      </div>
       <div class="card-body d-flex flex-column">
         <h6 class="card-title mb-1" title="{{ p.public_name }}">{{ p.public_name }}</h6>
 
-        <!-- Chips de variantes (hasta 6) sin anidar with -->
         <div class="mb-2" style="min-height:28px">
           {% with vlist=p.variants.all|slice:":6" %}
             {% if vlist %}
               {% for v in vlist %}
-                <span class="variant-chip">
-                  {{ v.color }}{% if v.size %} {{ v.size }}{% endif %}
-                </span>
+                <span class="variant-chip">{{ v.color }}{% if v.size %} {{ v.size }}{% endif %}</span>
               {% endfor %}
             {% else %}
               <span class="text-muted" style="font-size:.85rem;">Variante única</span>
@@ -46,43 +57,10 @@
           <div class="fw-semibold">
             $ {{ p.base_price|floatformat:2|intcomma }}
           </div>
-          <!-- Linkeamos por SKU para evitar /products/35/ -->
           <a class="btn btn-sm btn-outline-primary" href="{% url 'product_detail' sku=p.sku %}">
             Ver
           </a>
         </div>
-
-        <!-- Agregar rápido al carrito: solo variantes con stock -->
-        {% if p.variants.count %}
-          <form class="mt-2" action="{% url 'cart_add' %}" method="post">
-            {% csrf_token %}
-            <input type="hidden" name="product_id" value="{{ p.id }}">
-            <div class="input-group input-group-sm">
-              <select class="form-select" name="variant_id" required>
-                {% for v in p.variants.all %}
-                  {% if v.active and v.stock|default:0 > 0 %}
-                    <option value="{{ v.id }}">
-                      {{ v.color }}{% if v.size %} {{ v.size }}{% endif %}
-                    </option>
-                  {% endif %}
-                {% endfor %}
-              </select>
-              <input class="form-control" type="number" name="qty" value="1" min="1" style="max-width:80px;">
-              <button class="btn btn-primary" type="submit">Agregar</button>
-            </div>
-          </form>
-        {% else %}
-          <form class="mt-2" action="{% url 'cart_add' %}" method="post">
-            {% csrf_token %}
-            <input type="hidden" name="product_id" value="{{ p.id }}">
-            <input type="hidden" name="variant_id" value="">
-            <div class="input-group input-group-sm">
-              <input class="form-control" type="number" name="qty" value="1" min="1" style="max-width:80px;">
-              <button class="btn btn-primary" type="submit">Agregar</button>
-            </div>
-          </form>
-        {% endif %}
-
       </div>
     </div>
   </div>
@@ -93,12 +71,13 @@
   {% endfor %}
 </div>
 
-<!-- Paginación -->
 {% if page_obj.paginator.num_pages > 1 %}
 <nav class="mt-4">
   <ul class="pagination justify-content-center">
     {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?q={{ q }}&page={{ page_obj.previous_page_number }}">«</a></li>
+      <li class="page-item">
+        <a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if t %}t={{ t|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">«</a>
+      </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">«</span></li>
     {% endif %}
@@ -107,12 +86,19 @@
       {% if num == page_obj.number %}
         <li class="page-item active"><span class="page-link">{{ num }}</span></li>
       {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-        <li class="page-item"><a class="page-link" href="?q={{ q }}&page={{ num }}">{{ num }}</a></li>
+        <li class="page-item">
+         <a class="page-link"
+          href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if t %}t={{ t|urlencode }}&{% endif %}page={{ num }}">
+          {{ num }}
+        </a>
+        </li>
       {% endif %}
     {% endfor %}
 
     {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?q={{ q }}&page={{ page_obj.next_page_number }}">»</a></li>
+      <li class="page-item">
+        <a class="page-link" href="?{% if q %}q={{ q|urlencode }}&{% endif %}{% if t %}t={{ t|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">»</a>
+      </li>
     {% else %}
       <li class="page-item disabled"><span class="page-link">»</span></li>
     {% endif %}

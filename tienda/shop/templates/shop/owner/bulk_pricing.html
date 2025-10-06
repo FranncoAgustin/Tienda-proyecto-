@@ -1,8 +1,141 @@
-<html>
+{% extends "base.html" %}
 
-<body>
-    <h1>Recalcular</h1>{% if msg %}<p>{{msg}}</p>{% endif %}<form method='post'>{% csrf_token %}<input name='factor'
-            value='1.00'><button>Aplicar</button></form>
-</body>
+{% block title %}Recalcular precios{% endblock %}
 
-</html>
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h5 mb-0">Recalcular precios (masivo)</h1>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_dashboard' %}">← Volver</a>
+  </div>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags|default:'info' }} mb-3">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <strong>Configurar ajuste</strong>
+      <div class="small text-muted">Usá porcentajes positivos (suben) o negativos (bajan). Ej: 10, -5, 125</div>
+    </div>
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+
+        <div class="col-md-3">
+          <label class="form-label">Porcentaje global (%)</label>
+          <input type="text" name="pct_global" value="{{ pct_global }}" class="form-control" placeholder="0">
+          <div class="form-text">Se aplica cuando no se especifica uno por técnica.</div>
+        </div>
+
+        <div class="col-md-9">
+          <label class="form-label">Por técnica (override del global)</label>
+          <div class="row g-2">
+            <div class="col-6 col-md-3">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text w-50">Sublimación</span>
+                <input type="text" name="pct_sub" value="{{ pct_sub }}" class="form-control" placeholder="">
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text w-50">Láser</span>
+                <input type="text" name="pct_las" value="{{ pct_las }}" class="form-control" placeholder="">
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text w-50">3D</span>
+                <input type="text" name="pct_3d" value="{{ pct_3d }}" class="form-control" placeholder="">
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text w-50">Otro</span>
+                <input type="text" name="pct_otr" value="{{ pct_otr }}" class="form-control" placeholder="">
+              </div>
+            </div>
+          </div>
+          <div class="form-text">Si dejás en blanco, toma el porcentaje global.</div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Redondeo 000/500</label>
+          <select class="form-select" name="round_mode">
+            <option value="nearest" {% if round_mode == 'nearest' %}selected{% endif %}>Más cercano</option>
+            <option value="up" {% if round_mode == 'up' %}selected{% endif %}>Hacia arriba</option>
+            <option value="down" {% if round_mode == 'down' %}selected{% endif %}>Hacia abajo</option>
+          </select>
+        </div>
+
+        <div class="col-md-9">
+          <label class="form-label">Nota (opcional)</label>
+          <input type="text" class="form-control" name="note" value="{{ note }}" placeholder="Motivo del cambio, ej. 'Ajuste por lista proveedor'">
+        </div>
+
+        <div class="col-12 d-flex justify-content-end">
+          <button class="btn btn-primary">Aplicar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><strong>Historial de lotes</strong></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Fecha</th>
+              <th>Usuario</th>
+              <th>Actualizados</th>
+              <th>Parámetros</th>
+              <th>Nota</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for b in batches %}
+            <tr>
+              <td>{{ b.id }}</td>
+              <td>{{ b.created_at|date:"Y-m-d H:i" }}</td>
+              <td>{% if b.user %}{{ b.user.username }}{% else %}—{% endif %}</td>
+              <td>{{ b.updated_count }}</td>
+              <td class="small">
+                <div><strong>Global:</strong> {{ b.params.pct_global }}%</div>
+                <div><strong>Por técnica:</strong>
+                  SUB={{ b.params.pct_by_tech.SUB|default:"" }}%,
+                  LAS={{ b.params.pct_by_tech.LAS|default:"" }}%,
+                  3D={{ b.params.pct_by_tech.3D|default:"" }}%,
+                  OTR={{ b.params.pct_by_tech.OTR|default:"" }}%
+                </div>
+                <div><strong>Redondeo:</strong> {{ b.params.round_mode }}</div>
+              </td>
+              <td class="small text-muted">{{ b.note|default:"" }}</td>
+              <td class="text-end">
+                {% if not b.is_reverted %}
+                  <a class="btn btn-sm btn-outline-danger"
+                     href="{% url 'owner_bulk_pricing_revert' b.id %}"
+                     onclick="return confirm('¿Revertir el lote #{{ b.id }}?')">
+                    Revertir
+                  </a>
+                {% else %}
+                  <span class="badge text-bg-secondary">Revertido</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">Aún no hay historial.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

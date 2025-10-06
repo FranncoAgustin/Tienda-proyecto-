@@ -51,10 +51,15 @@ TEMPLATES = [{
     },
 }]
 
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8275953597:AAEb2kwrO0Ez7bMBqTraa5CMlPkNaPoHFIw")  # pegá tu token acá o en el env
+# (opcional) restringir quién puede usar el bot: IDs de chat permitidos separados por coma.
+# Podés obtener tu chat_id hablando con @userinfobot en Telegram.
+TELEGRAM_ALLOWED_CHATS = [int(x) for x in os.getenv("TELEGRAM_ALLOWED_CHATS", "").split(",") if x.strip().isdigit()]
+
 # ---- Rutas ESCRIBIBLES junto al exe ----
 DATA_DIR = RUNTIME_DIR / "data"
 MEDIA_ROOT = RUNTIME_DIR / "media"
-STATIC_ROOT = RUNTIME_DIR / "staticfiles"   # si usás collectstatic
+STATIC_ROOT = RUNTIME_DIR / "staticfiles"
 
 # Crear si no existen (útil en modo portable)
 for d in (DATA_DIR, MEDIA_ROOT, STATIC_ROOT):
@@ -78,9 +83,11 @@ STATIC_URL = "/static/"
 # Siempre apuntamos a los estáticos que empaquetamos bajo APP_DIR
 STATICFILES_DIRS = [APP_DIR / "static", APP_DIR / "shop" / "static"]
 # STATIC_ROOT lo dejás para uso opcional de collectstatic si querés
-STATIC_ROOT = RUNTIME_DIR / "staticfiles"
+
 
 MEDIA_URL = "/media/"
+
+PDF_WATERMARK_IMAGE = MEDIA_ROOT / "watermark.png"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -88,3 +95,5 @@ CART_SESSION_KEY = "cart"
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://127.0.0.1:8000")
 LOGIN_URL = "/admin/login/"
+SHOP_WHATSAPP_URL = "https://wa.me/message/NSO7K5POCXLKE1"   # sin + ni espacios
+SHOP_INSTAGRAM_URL = "https://www.instagram.com/_mundo_personalizado"

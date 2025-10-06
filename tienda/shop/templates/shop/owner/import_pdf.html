@@ -1,49 +1,343 @@
-<html>
-  <body>
-    <h1>Importar lista desde PDF</h1>
+{% extends "base.html" %}
 
-    <form method="post" enctype="multipart/form-data">
-      {% csrf_token %}
-      <p>
-        <input type="file" name="file" accept="application/pdf" required>
-      </p>
-      <p>
-        <label>
-          <input type="checkbox" name="update_only" {% if update_only %}checked{% endif %}>
-          Solo actualizar (no crear nuevos productos)
-        </label>
-      </p>
-      <button>Procesar PDF</button>
-    </form>
+{% block title %}Importar desde PDF{% endblock %}
 
-    {% if msg %}<p><strong>{{ msg }}</strong></p>{% endif %}
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h5 mb-0">Importar/Actualizar desde PDF</h1>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_dashboard' %}">← Volver</a>
+  </div>
 
-    {% if report.usd_to_review %}
-      <h3>Precios en USD para revisar</h3>
-      <ul>
-        {% for it in report.usd_to_review %}
-          <li>{{ it.sku }} — U$S {{ it.price_usd }}</li>
-        {% endfor %}
-      </ul>
+  {% if msg %}
+    <div class="alert alert-info">{{ msg }}</div>
+  {% endif %}
+
+  <!-- Paso 1: Cargar PDF -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label">Archivo PDF</label>
+            <input type="file" name="file" accept="application/pdf" class="form-control" required>
+          </div>
+          <div class="col-md-3">
+            <div class="form-check mt-4">
+              <input class="form-check-input" type="checkbox" name="update_only" id="updOnly" {% if update_only %}checked{% endif %}>
+              <label class="form-check-label" for="updOnly">Sólo actualizar existentes (no crear nuevos)</label>
+            </div>
+          </div>
+          <div class="col-md-3 text-end">
+            <button class="btn btn-primary mt-4">Previsualizar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if preview and candidates %}
+  <!-- Paso 1.5: Revisión y decisiones -->
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="confirm" value="1">
+    {% if update_only %}<input type="hidden" name="update_only" value="on">{% endif %}
+
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Revisión de ítems detectados</strong>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAll('apply')">Marcar todo: Crear/Actualizar</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAll('ignore')">Marcar todo: Ignorar</button>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="min-width:220px">Nombre detectado</th>
+                <th class="text-center">Moneda</th>
+                <th class="text-end" style="min-width:120px">Precio</th>
+                <th class="text-center">Duplicado en PDF</th>
+                <th>Coincidencia exacta DB</th>
+                <th>Sugerencia similar</th>
+                <th style="min-width:220px">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for c in candidates %}
+              <tr>
+                <td class="fw-semibold">{{ c.name }}</td>
+                <td class="text-center">
+                  {% if c.currency == 'USD' %}
+                    <span class="badge text-bg-warning">USD</span>
+                  {% else %}
+                    <span class="badge text-bg-success">ARS</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {% if c.currency == 'USD' %}U$S {{ c.price }}{% else %}$ {{ c.price }}{% endif %}
+                </td>
+                <td class="text-center">
+                  {% if c.dup_in_pdf %}
+                    <span class="badge text-bg-danger">Sí</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary">No</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if c.exact_db_id %}
+                    <span class="badge text-bg-primary">Exacta</span>
+                    <div class="small text-muted">{{ c.exact_db_label }}</div>
+                  {% else %}
+                    <span class="text-muted small">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if c.sug_id %}
+                    <span class="badge text-bg-info">Sugerida {{ c.sug_score }}%</span>
+                    <div class="small text-muted">{{ c.sug_label }}</div>
+                  {% else %}
+                    <span class="text-muted small">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <!-- Cambio: por defecto IGNORAR si hay coincidencia exacta y NO está en update_only -->
+                  <select name="action_{{ forloop.counter0 }}" class="form-select form-select-sm action-select">
+                    <option value="apply"
+                      {% if not c.exact_db_id or update_only %}selected{% endif %}>
+                      Crear / Actualizar automáticamente
+                    </option>
+                    <option value="ignore"
+                      {% if c.exact_db_id and not update_only %}selected{% endif %}>
+                      Ignorar este ítem
+                    </option>
+                    {% if c.exact_db_id %}
+                      <option value="merge:{{ c.exact_db_id }}">Unir con existente (coincidencia exacta)</option>
+                    {% elif c.sug_id %}
+                      <option value="merge:{{ c.sug_id }}">Unir con sugerencia ({{ c.sug_score }}%)</option>
+                    {% endif %}
+                  </select>
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer d-flex justify-content-end gap-2">
+        <button type="submit" class="btn btn-primary">Confirmar e importar</button>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    function setAll(val){
+      document.querySelectorAll('.action-select').forEach(sel => {
+        const opt = Array.from(sel.options).find(o => o.value === val || o.value.startsWith(val + ":"));
+        if(opt){ sel.value = opt.value; } else { sel.value = 'apply'; }
+      });
+    }
+  </script>
+  {% endif %}
+
+  {% if report and not preview %}
+  <!-- Reporte final con listas detalladas -->
+  <div class="accordion" id="pdfReportAccordion">
+
+    {% if report.imported_items %}
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headImported">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#colImported" aria-expanded="true" aria-controls="colImported">
+          Importados ({{ report.imported|default:0 }})
+        </button>
+      </h2>
+      <div id="colImported" class="accordion-collapse collapse show" aria-labelledby="headImported" data-bs-parent="#pdfReportAccordion">
+        <div class="accordion-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>SKU / Nombre</th>
+                  <th>Moneda</th>
+                  <th class="text-end">Precio</th>
+                  <th>Nota</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for it in report.imported_items %}
+                <tr>
+                  <td class="text-truncate">{{ it.sku }}</td>
+                  <td>{{ it.currency }}</td>
+                  <td class="text-end">
+                    {% if it.currency == 'USD' %}U$S {{ it.price }}{% else %}$ {{ it.price }}{% endif %}
+                  </td>
+                  <td class="small text-muted">{{ it.note }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
     {% endif %}
 
-    {% if report.not_found and update_only %}
-      <h3>No encontrados en DB (no creados por modo “Actualizar solo”)</h3>
-      <ul>
-        {% for sku in report.not_found %}
-          <li>{{ sku }}</li>
-        {% endfor %}
-      </ul>
+    {% if report.updated_items %}
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headUpdated">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#colUpdated" aria-expanded="false" aria-controls="colUpdated">
+          Actualizados ({{ report.updated|default:0 }})
+        </button>
+      </h2>
+      <div id="colUpdated" class="accordion-collapse collapse" aria-labelledby="headUpdated" data-bs-parent="#pdfReportAccordion">
+        <div class="accordion-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>SKU / Nombre</th>
+                  <th>Moneda</th>
+                  <th class="text-end">Precio nuevo</th>
+                  <th class="text-end">Precio anterior</th>
+                  <th>Cambio</th>
+                  <th>Nota</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for it in report.updated_items %}
+                <tr>
+                  <td class="text-truncate">{{ it.sku }}</td>
+                  <td>{{ it.currency }}</td>
+                  <td class="text-end">
+                    {% if it.currency == 'USD' %}U$S {{ it.price }}{% else %}$ {{ it.price }}{% endif %}
+                  </td>
+                  <td class="text-end">{% if it.prev_price %}$ {{ it.prev_price }}{% else %}—{% endif %}</td>
+                  <td>
+                    {% if it.changed %}
+                      <span class="badge text-bg-success">Sí</span>
+                    {% else %}
+                      <span class="badge text-bg-secondary">No</span>
+                    {% endif %}
+                  </td>
+                  <td class="small text-muted">{{ it.note }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="p-3 small text-muted">
+            <strong>USD</strong>: no se modifica el <em>base_price</em>; quedan listados para revisión.
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if report.skipped_items %}
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headSkipped">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#colSkipped" aria-expanded="false" aria-controls="colSkipped">
+          Omitidos ({{ report.skipped|default:0 }})
+        </button>
+      </h2>
+      <div id="colSkipped" class="accordion-collapse collapse" aria-labelledby="headSkipped" data-bs-parent="#pdfReportAccordion">
+        <div class="accordion-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Motivo</th>
+                  <th>SKU/Nombre</th>
+                  <th>Línea</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for it in report.skipped_items %}
+                <tr>
+                  <td class="text-nowrap">{{ it.reason }}</td>
+                  <td class="text-truncate">{% if it.sku %}{{ it.sku }}{% else %}—{% endif %}</td>
+                  <td class="small text-muted text-truncate">{{ it.line|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="p-3 small text-muted">
+            Ejemplos: <code>ignorado_por_usuario</code>, <code>precio_ARS_invalido_confirm</code>, <code>update_only_sin_existente</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if report.usd_to_review %}
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headUSD">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#colUSD" aria-expanded="false" aria-controls="colUSD">
+          USD a revisar ({{ report.usd_to_review|length }})
+        </button>
+      </h2>
+      <div id="colUSD" class="accordion-collapse collapse" aria-labelledby="headUSD" data-bs-parent="#pdfReportAccordion">
+        <div class="accordion-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for it in report.usd_to_review %}
+              <li class="list-group-item d-flex justify-content-between">
+                <span>{{ it.sku }}</span>
+                <span class="text-muted">U$S {{ it.price_usd }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if report.not_found %}
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headNotFound">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#colNotFound" aria-expanded="false" aria-controls="colNotFound">
+          No encontrados ({{ report.not_found|length }})
+        </button>
+      </h2>
+      <div id="colNotFound" class="accordion-collapse collapse" aria-labelledby="headNotFound" data-bs-parent="#pdfReportAccordion">
+        <div class="accordion-body">
+          <div class="small text-muted">Con <em>sólo actualizar</em> activado, estos ítems no se crean.</div>
+          <div class="mt-2">
+            {% for sku in report.not_found %}
+              <span class="badge text-bg-secondary me-1 mb-1">{{ sku }}</span>
+            {% empty %}
+              <span class="text-muted">—</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
     {% endif %}
 
     {% if report.not_seen_active %}
-      <h3>Activos no vistos en este PDF (solo informe)</h3>
-      <p class="muted">Revisá si querés deshabilitarlos manualmente desde el admin.</p>
-      <ul>
-        {% for sku in report.not_seen_active %}
-          <li>{{ sku }}</li>
-        {% endfor %}
-      </ul>
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headNotSeen">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#colNotSeen" aria-expanded="false" aria-controls="colNotSeen">
+          Activos no vistos en PDF ({{ report.not_seen_active|length }})
+        </button>
+      </h2>
+      <div id="colNotSeen" class="accordion-collapse collapse" aria-labelledby="headNotSeen" data-bs-parent="#pdfReportAccordion">
+        <div class="accordion-body">
+          {% for sku in report.not_seen_active %}
+            <span class="badge text-bg-light border me-1 mb-1">{{ sku }}</span>
+          {% empty %}
+            <span class="text-muted">—</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
     {% endif %}
-  </body>
-</html>
+
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
