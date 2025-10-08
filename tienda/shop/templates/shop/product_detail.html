@@ -1,176 +1,84 @@
 {% extends "base.html" %}
 {% load humanize %}
 
-{% block title %}{{ product.public_name }}{% endblock %}
+{% block title %}{{ product.public_name|default:product.sku }}{% endblock %}
 
 {% block content %}
-<div class="row g-4 align-items-start">
-  <!-- Galería / Carrusel del PRODUCTO -->
-  <div class="col-12 col-md-6">
-    <div id="product-gallery">
-      {% if product.images.count %}
-        <div id="carousel{{ product.id }}" class="carousel slide" data-bs-ride="carousel">
-          <div class="carousel-inner">
-            {% for img in product.images.all %}
-              <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                <img src="{{ img.image.url }}" class="d-block w-100" alt="{{ img.alt_text|default:product.public_name }}">
-              </div>
-            {% endfor %}
-          </div>
-          {% if product.images.count > 1 %}
-            <button class="carousel-control-prev" type="button" data-bs-target="#carousel{{ product.id }}" data-bs-slide="prev" aria-label="Anterior">
-              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#carousel{{ product.id }}" data-bs-slide="next" aria-label="Siguiente">
-              <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            </button>
-          {% endif %}
+<div class="container py-3">
+  <div class="row g-4">
+    <!-- Galería -->
+    <div class="col-12 col-md-6">
+      <div class="card shadow-sm">
+        <div class="ratio ratio-4x3">
+          {% with first=product.images.first %}
+            {% if first %}
+              <img id="pd-main-img" src="{{ first.image.url }}" class="w-100 h-100" style="object-fit:cover;" alt="{{ product.public_name|default:product.sku }}">
+            {% else %}
+              <img id="pd-main-img" src="https://via.placeholder.com/800x600?text=Sin+imagen" class="w-100 h-100" style="object-fit:cover;" alt="{{ product.public_name|default:product.sku }}">
+            {% endif %}
+          {% endwith %}
         </div>
-      {% else %}
-        <img src="https://via.placeholder.com/800x800?text=Sin+Imagen" class="img-fluid rounded" alt="Sin imagen">
+      </div>
+
+      {% if product.images.all %}
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        {% for im in product.images.all %}
+          <img src="{{ im.image.url }}" data-full="{{ im.image.url }}"
+               class="rounded shadow-sm" style="width:72px;height:72px;object-fit:cover;cursor:pointer"
+               alt="thumb {{ forloop.counter }}">
+        {% endfor %}
+      </div>
       {% endif %}
     </div>
 
-    <!-- Imagen de la VARIANTE (solo si existe) -->
-    <div id="variant-image-preview" class="mt-3" style="display:none;">
-      <img id="variant-image-tag" src="" class="img-fluid rounded" alt="Imagen de variante">
+    <!-- Info + Agregar al carrito -->
+    <div class="col-12 col-md-6">
+      <h1 class="h4 mb-1">{{ product.public_name|default:product.sku }}</h1>
+
+      <div class="d-flex align-items-center gap-2 mb-2">
+        {% if product.tech %}
+          <span class="badge text-bg-light">{{ product.get_tech_display }}</span>
+        {% endif %}
+        {% if product.sku %}
+          <span class="text-muted small">SKU: {{ product.sku }}</span>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        {% if product.discounted_price %}
+          <div class="small text-muted mb-1"><s>$ {{ product.base_price|floatformat:2 }}</s></div>
+          <div class="fs-3 fw-semibold text-danger">$ {{ product.discounted_price|floatformat:2 }}</div>
+          {% if product.discount_percent %}<div class="small text-danger fw-semibold">{{ product.discount_percent|floatformat:0 }}% OFF</div>{% endif %}
+          {% if product.promo_ends %}<div class="small text-muted">hasta {{ product.promo_ends|date:"d/m H:i" }}</div>{% endif %}
+        {% else %}
+          <div class="fs-3 fw-semibold">$ {{ product.base_price|floatformat:2 }}</div>
+        {% endif %}
+      </div>
+
+      {% include "shop/cart_add.html" with product=product %}
     </div>
-  </div>
-
-  <!-- Info / Compra -->
-  <div class="col-12 col-md-6">
-    <h1 class="h4 mb-2">{{ product.public_name }}</h1>
-
-    <!-- Precio dinámico -->
-    <p class="fs-5 fw-semibold mb-3">
-      $ <span id="product-price">{{ product.base_price|floatformat:2|intcomma }}</span>
-    </p>
-
-    {% if product.description %}
-      <div class="mb-3 text-muted" style="white-space:pre-line;">{{ product.description }}</div>
-    {% endif %}
-
-    <form method="post" action="{% url 'cart_add' %}" class="row g-2">
-      {% csrf_token %}
-      <input type="hidden" name="product_id" value="{{ product.id }}">
-
-      {% if variants %}
-        <div class="col-12">
-          <label class="form-label" for="variant-select">Variante</label>
-          <select id="variant-select" name="variant_id" class="form-select" required>
-            <!-- ✅ Placeholder: obliga a seleccionar una variante -->
-            <option value="" selected disabled>Elegí una variante</option>
-
-            {% for v in variants %}
-              {% with price=v.price %}
-                <option
-                  value="{{ v.id }}"
-                  {% if v.stock == 0 %}disabled{% endif %}
-                  data-price="{{ price }}"
-                  data-price-text="{{ price|floatformat:2|intcomma }}"
-                  data-image-url="{% if v.image %}{{ v.image.url }}{% endif %}"
-                  data-stock="{{ v.stock|default:0 }}"
-                >
-                  {% if v.color or v.size %}{{ v.color }} {{ v.size }}{% else %}Única{% endif %}
-                  — ${{ price|floatformat:2|intcomma }}
-                  ({% if v.stock > 0 %}{{ v.stock }} en stock{% else %}Sin stock{% endif %})
-                </option>
-              {% endwith %}
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="col-auto mt-2">
-          <label class="visually-hidden" for="qty">Cantidad</label>
-          <!-- ✅ Deshabilitado hasta elegir variante -->
-          <input id="qty" class="form-control" name="qty" type="number" value="1" min="1" style="max-width:120px;" disabled>
-          <div id="stock-hint" class="form-text"></div>
-        </div>
-
-        <div class="col-auto mt-2">
-          <!-- ✅ Deshabilitado hasta elegir variante con stock -->
-          <button id="add-btn" class="btn btn-primary" type="submit" disabled>Agregar</button>
-        </div>
-      {% else %}
-        <div class="col-12">
-          <div class="alert alert-warning mb-0">Este producto no tiene variantes disponibles.</div>
-        </div>
-      {% endif %}
-    </form>
   </div>
 </div>
 
-<!-- JS: mostrar galería al inicio; al elegir variante con imagen, ocultar galería y mostrar foto de variante -->
 <script>
 (function(){
-  const sel     = document.getElementById('variant-select');
-  const price   = document.getElementById('product-price');
-  const gallery = document.getElementById('product-gallery');
-  const vPrev   = document.getElementById('variant-image-preview');
-  const vImg    = document.getElementById('variant-image-tag');
-  const qty     = document.getElementById('qty');
-  const hint    = document.getElementById('stock-hint');
-  const add     = document.getElementById('add-btn');
-
-  if (!sel) return;
-
-  function resetUI(){
-    // Mostrar galería general
-    if (gallery) gallery.style.display = '';
-    // Ocultar preview variante
-    if (vPrev)   vPrev.style.display   = 'none';
-    if (vImg)    vImg.src = '';
-    // Controles deshabilitados hasta elegir
-    if (add) add.disabled = true;
-    if (qty){
-      qty.disabled = true;
-      qty.value = 1;
-      qty.removeAttribute('max');
-    }
-    if (hint) hint.textContent = '';
-    // Precio queda en base (ya renderizado)
-  }
-
-  // Estado inicial
-  resetUI();
-
-  sel.addEventListener('change', function(){
-    const opt = sel.options[sel.selectedIndex];
-    // Si seleccionan el placeholder o nada, volvemos a estado inicial
-    if (!opt || !opt.value) {
-      resetUI();
-      return;
-    }
-
-    // Precio dinámico
-    const pText = opt.dataset.priceText || '';
-    if (pText) price.textContent = pText;
-
-    // Imagen: si la variante tiene, ocultar galería y mostrar preview
-    const imgUrl = opt.dataset.imageUrl;
-    if (imgUrl) {
-      if (vImg)  vImg.src = imgUrl;
-      if (vPrev) vPrev.style.display = '';
-      if (gallery) gallery.style.display = 'none';
-    } else {
-      // Sin imagen de variante → volvemos a la galería
-      if (vImg)  vImg.src = '';
-      if (vPrev) vPrev.style.display = 'none';
-      if (gallery) gallery.style.display = '';
-    }
-
-    // Stock y controles
-    const stock = parseInt(opt.dataset.stock || "0", 10);
-    if (qty){
-      qty.disabled = !(stock > 0);
-      qty.max = Math.max(stock, 1);
-      let q = parseInt(qty.value || "1", 10);
-      q = Math.min(Math.max(q, 1), stock > 0 ? stock : 1);
-      qty.value = q;
-    }
-    if (add) add.disabled = !(stock > 0);
-    if (hint) hint.textContent = stock > 0 ? `Stock disponible: ${stock} unidad(es).` : `Sin stock para esta variante.`;
+  // Thumbnails -> imagen principal
+  document.addEventListener('click', function(ev){
+    const t = ev.target.closest('[data-full]');
+    if (!t) return;
+    const main = document.getElementById('pd-main-img');
+    if (main) main.src = t.dataset.full;
   });
+
+  // Cambiar imagen si la variante tiene imagen propia
+  document.addEventListener('cart:variant-changed', function(e){
+    const url = e.detail && e.detail.image_url;
+    if (!url) return;
+    const main = document.getElementById('pd-main-img');
+    if (main) main.src = url;
+  });
+
+  // Envío por fetch ya lo manejás en el cart_add.html
 })();
 </script>
 {% endblock %}

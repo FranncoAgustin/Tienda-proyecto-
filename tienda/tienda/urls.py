@@ -15,9 +15,12 @@ urlpatterns = [
     path('cart/add/', views.cart_add, name='cart_add'),
     path('cart/remove/', views.cart_remove, name='cart_remove'),
     path('checkout/', views.checkout, name='checkout'),
+    path('api/products/<str:sku>/variants/', views.product_variants_json, name="product_variants_json"),
+    path("api/products/by-id/<int:pk>/variants/", views.product_variants_by_id_json, name="product_variants_by_id_json"),
+    path("api/products/id/<int:pk>/variants/", views.product_variants_by_id_json),
+    path('cart/update/', views.cart_update, name='cart_update'),
 
-    # JSON público
-    path('api/products/<path:sku>/variants/', views.product_variants_json, name='product_variants_json'),
+
 
     # Owner (UI)
     path('owner/', views.owner_dashboard, name='owner_dashboard'),
@@ -31,6 +34,8 @@ urlpatterns = [
     path('owner/import_pdf/', views.owner_import_pdf, name='owner_import_pdf'),
     path('owner/export_pdf/', views.owner_export_pdf, name='owner_export_pdf'),
     path('owner/export_pdf/ui/', views.owner_export_pdf_ui, name='owner_export_pdf_ui'),
+    path('owner/offers/', views.owner_offers, name='owner_offers'),
+    path('owner/coupons/', views.owner_coupons, name='owner_coupons'),
 
     # Owner APIs
     path('owner/api/search_products/', views.owner_search_products_api, name='owner_search_products_api'),
@@ -40,6 +45,8 @@ urlpatterns = [
     path('owner/api/products/<int:pk>/set_tech/', views.owner_api_set_tech, name='owner_api_set_tech'),
     path('owner/api/categories/', views.owner_api_categories, name='owner_api_categories'),
     path('owner/api/product/set_category/', views.owner_api_product_set_category, name='owner_api_product_set_category'),
+    path('api/products/<path:sku>/variants/', views.product_variants_json, name='product_variants_json'),
+    path('api/products/id/<int:pk>/variants/', views.product_variants_by_id_json, name='product_variants_by_id_json'),
 ]
 
 if settings.DEBUG:

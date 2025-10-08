@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Cupones{% endblock %}
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h5 mb-0">Cupones</h1>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'owner_dashboard' %}">← Volver</a>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">Nuevo cupón</div>
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-3">
+          <label class="form-label">Código</label>
+          <input name="code" class="form-control" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">% Descuento</label>
+          <input name="percent" type="number" min="1" max="90" class="form-control" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Inicio</label>
+          <input name="start_at" type="datetime-local" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Fin</label>
+          <input name="end_at" type="datetime-local" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Filtrar por técnica</label>
+          <select name="tech" class="form-select">
+            <option value="">(todas)</option>
+            <option value="SUB">Sublimación</option>
+            <option value="LAS">Grabado láser</option>
+            <option value="3D">Impresión 3D</option>
+            <option value="OTR">Otro</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Límite de usos</label>
+          <input name="usage_limit" type="number" min="1" class="form-control" placeholder="opcional">
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input type="checkbox" name="active" class="form-check-input" id="cActive" checked>
+            <label class="form-check-label" for="cActive">Activo</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary">Crear cupón</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Cupones existentes</div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>Código</th><th>%</th><th>Ventana</th><th>Técnica</th><th>Usos</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+          {% for c in coupons %}
+          <tr>
+            <td class="fw-semibold">{{ c.code }}</td>
+            <td>{{ c.percent }}%</td>
+            <td>
+              {% if c.start_at %}{{ c.start_at|date:"d/m H:i" }}{% else %}—{% endif %}
+              →
+              {% if c.end_at %}{{ c.end_at|date:"d/m H:i" }}{% else %}—{% endif %}
+            </td>
+            <td>{{ c.get_tech_filter_display|default:"(todas)" }}</td>
+            <td>
+              {% if c.usage_limit %}
+                {{ c.used_count }}/{{ c.usage_limit }}
+              {% else %}
+                {{ c.used_count }}
+              {% endif %}
+            </td>
+            <td>
+              {% if c.active %}
+                <span class="badge text-bg-success">Activo</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Inactivo</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No hay cupones.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

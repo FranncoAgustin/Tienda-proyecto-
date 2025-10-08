@@ -1,1 +1,168 @@
-<html><body><h1>Checkout</h1>{% if error %}<p>{{error}}</p>{% endif %}<form method='post'>{% csrf_token %}<input name='full_name' placeholder='Nombre'><input name='email' placeholder='Email'><button>MP</button></form></body></html>
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row g-4">
+    <!-- Datos del cliente -->
+    <div class="col-lg-7">
+      <h1 class="h5 mb-3">Finalizar compra</h1>
+
+      {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
+
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <form method="post" id="checkout-form">
+            {% csrf_token %}
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Nombre y apellido *</label>
+                <input type="text" name="full_name" class="form-control" required value="{{ full_name|default:'' }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Email *</label>
+                <input type="email" name="email" class="form-control" required value="{{ email|default:'' }}">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Notas (opcional)</label>
+                <textarea name="notes" class="form-control" rows="2" placeholder="Algo que debamos saber...">{{ notes|default:'' }}</textarea>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Método de entrega *</label>
+                <div class="list-group">
+                  <label class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>
+                      <input class="form-check-input me-2" type="radio" name="shipping_method" value="pickup" data-cost="0" {% if shipping_method == 'pickup' or not shipping_method %}checked{% endif %}>
+                      Retiro en tienda
+                    </span>
+                    <span class="badge text-bg-success">$ 0</span>
+                  </label>
+                  <label class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>
+                      <input class="form-check-input me-2" type="radio" name="shipping_method" value="standard" data-cost="{{ shipping_prices.standard }}">
+                      Envío estándar (72h)
+                    </span>
+                    <span class="badge text-bg-light">$ {{ shipping_prices.standard|floatformat:0 }}</span>
+                  </label>
+                  <label class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>
+                      <input class="form-check-input me-2" type="radio" name="shipping_method" value="express" data-cost="{{ shipping_prices.express }}">
+                      Envío express (24h)
+                    </span>
+                    <span class="badge text-bg-light">$ {{ shipping_prices.express|floatformat:0 }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <button class="btn btn-primary btn-lg w-100" type="submit">
+                  Pagar con Mercado Pago
+                </button>
+              </div>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+      <div class="small text-muted mt-3">
+        Al confirmar la compra, te redirigiremos a Mercado Pago. No guardamos datos de tarjeta.
+      </div>
+    </div>
+
+    <!-- Resumen del pedido -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white">
+          <strong>Tu pedido</strong>
+        </div>
+        <div class="card-body">
+
+          {% if not items %}
+            <div class="text-center text-muted py-4">
+              Tu carrito está vacío.
+            </div>
+          {% else %}
+            <ul class="list-group list-group-flush mb-3">
+              {% for it in items %}
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                  <div class="me-3" style="width:64px;height:64px;overflow:hidden;border-radius:.25rem;">
+                    {% with img=it.variant.product.images.first %}
+                      {% if img %}
+                        <img src="{{ img.image.url }}" alt="" style="width:100%;height:100%;object-fit:cover;">
+                      {% else %}
+                        <img src="https://via.placeholder.com/64?text=—" alt="" style="width:100%;height:100%;object-fit:cover;">
+                      {% endif %}
+                    {% endwith %}
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold text-truncate" title="{{ it.variant.product.public_name|default:it.variant.product.sku }}">
+                      {{ it.variant.product.public_name|default:it.variant.product.sku }}
+                    </div>
+                    <div class="text-muted small">
+                      {% if it.variant.color %}{{ it.variant.color }}{% endif %}{% if it.variant.size %}, {{ it.variant.size }}{% endif %}
+                      · x{{ it.qty }}
+                    </div>
+                    <div class="small">Unit: $ {{ it.unit_price|floatformat:2 }}</div>
+                  </div>
+                  <div class="ms-2 fw-semibold">
+                    $ {{ it.line_total|floatformat:2 }}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Subtotal</span>
+              <span>$ {{ subtotal|floatformat:2 }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Envío</span>
+              <span id="ship-amount">$ {{ shipping|floatformat:2 }}</span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between fs-5">
+              <span>Total</span>
+              <strong id="grand-total" data-subtotal="{{ subtotal }}" data-shipping="{{ shipping }}">
+                $ {{ total|floatformat:2 }}
+              </strong>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <a href="{% url 'cart' %}" class="btn btn-outline-secondary w-100 mt-3">Volver al carrito</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Recalcular totals según método de envío
+  (function () {
+    const radios = document.querySelectorAll('input[name="shipping_method"]');
+    const grand = document.getElementById('grand-total');
+    const ship = document.getElementById('ship-amount');
+    if (!radios.length || !grand || !ship) return;
+
+    function fmt(n) { return new Intl.NumberFormat('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(n); }
+
+    function recalc() {
+      const subtotal = parseFloat(grand.getAttribute('data-subtotal')) || 0;
+      let shipping = 0;
+      const sel = document.querySelector('input[name="shipping_method"]:checked');
+      if (sel) shipping = parseFloat(sel.getAttribute('data-cost')) || 0;
+      ship.textContent = '$ ' + fmt(shipping);
+      grand.textContent = '$ ' + fmt(subtotal + shipping);
+    }
+    radios.forEach(r => r.addEventListener('change', recalc));
+    recalc();
+  })();
+</script>
+{% endblock %}

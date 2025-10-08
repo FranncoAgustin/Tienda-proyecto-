@@ -97,3 +97,15 @@ SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://127.0.0.1:8000")
 LOGIN_URL = "/admin/login/"
 SHOP_WHATSAPP_URL = "https://wa.me/message/NSO7K5POCXLKE1"   # sin + ni espacios
 SHOP_INSTAGRAM_URL = "https://www.instagram.com/_mundo_personalizado"
+
+# Aceptar el Host que llega por ngrok
+ALLOWED_HOSTS = [
+    "localhost", "127.0.0.1", "[::1]",
+    ".ngrok-free.app", ".ngrok-free.dev"   # 🔴 clave
+]
+
+# Confiar en los orígenes HTTPS de ngrok para CSRF (Django 4+ exige esquema)
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.ngrok-free.app",
+    "https://*.ngrok-free.dev",            # 🔴 clave (tu error muestra .ngrok-free.dev)
+    ]

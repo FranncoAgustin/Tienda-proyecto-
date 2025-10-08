@@ -61,6 +61,73 @@ from .models import (
 # Helpers / Utils
 # ---------------------------------------------------------------------
 
+def _price_for_variant(v: Variant) -> Decimal:
+    return v.price_override if v.price_override is not None else v.product.base_price
+
+def _cart_items_from_session(request):
+    """
+    Devuelve (items, subtotal). items: lista de dicts con variant, qty, unit_price, line_total
+    Estructura de session: { "variant_id": qty, ... }
+    """
+    cart = _get_cart(request.session)  # dict
+    if not cart:
+        return [], Decimal('0.00')
+
+    ids = [int(k) for k in cart.keys() if str(k).isdigit()]
+    variants = (
+        Variant.objects.filter(id__in=ids, active=True, product__active=True)
+        .select_related("product")
+    )
+    by_id = {v.id: v for v in variants}
+
+    items = []
+    subtotal = Decimal('0.00')
+    for k, qty in cart.items():
+        try:
+            vid = int(k)
+            v = by_id.get(vid)
+            if not v:
+                continue
+            q = max(1, int(qty))
+            unit = _price_for_variant(v)
+            line = (unit * q).quantize(Decimal('0.01'))
+            items.append({"variant": v, "qty": q, "unit_price": unit, "line_total": line})
+            subtotal += line
+        except Exception:
+            continue
+    return items, subtotal
+
+def _active_promotions_cached():
+    from .models import Promotion  # import lazy
+    now = timezone.now()
+    promos = list(
+        Promotion.objects.filter(
+            active=True, start_at__lte=now, end_at__gte=now
+        ).prefetch_related("products")
+    )
+    # cache pids en memoria
+    for pr in promos:
+        pr._pids = set(pr.products.values_list("id", flat=True))
+    return promos
+
+def _best_promo_for_product(promos, product):
+    best = None
+    best_pct = 0
+    for pr in promos:
+        applies = False
+        if pr._pids:
+            applies = (product.id in pr._pids)
+        else:
+            applies = (not pr.tech_filter) or (product.tech == pr.tech_filter)
+        if applies and pr.percent > best_pct:
+            best = pr
+            best_pct = pr.percent
+    return best  # o None
+
+def _apply_percent(price: Decimal, percent: int) -> Decimal:
+    q = (price * (Decimal(100 - percent) / Decimal(100))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return q
+
 def _parse_pct(s, default=None):
     """
     Convierte '10' -> Decimal('10'), '-5.5' -> Decimal('-5.5')
@@ -181,34 +248,92 @@ def _normalize_tech_from_json(val: str) -> str:
 # Público (Catálogo / Producto / Carrito / Checkout)
 # ---------------------------------------------------------------------
 
-def product_variants_json(request, sku):
-    product = get_object_or_404(Product, sku=sku, active=True)
-    variants = product.variants.filter(active=True).values(
+def product_variants_by_id_json(request, pk):
+    """
+    Igual a product_variants_json pero resolviendo por PK estrictamente.
+    """
+    product = get_object_or_404(Product, pk=pk, active=True)
+
+    vs = product.variants.filter(active=True).values(
         "id", "color", "size", "stock", "price_override", "image"
     )
-    return JsonResponse(
-        {
-            "sku": product.sku,
-            "public_name": product.public_name,
-            "base_price": str(product.base_price),
-            "variants": [
-                {
-                    "id": v["id"],
-                    "label": " ".join([v["color"] or "", v["size"] or ""]).strip() or "Única",
-                    "stock": v["stock"],
-                    "price": (
-                        str(v["price_override"])
-                        if v["price_override"] is not None
-                        else str(product.base_price)
-                    ),
-                    "image_url": (request.build_absolute_uri(v["image"]) if v["image"] else None),
-                }
-                for v in variants
-            ],
-        }
+
+    def abs_media_url(path_rel):
+        if not path_rel:
+            return None
+        rel = settings.MEDIA_URL.rstrip("/") + "/" + str(path_rel).lstrip("/")
+        return request.build_absolute_uri(rel)
+
+    data = {
+        "sku": product.sku,
+        "public_name": product.public_name,
+        "base_price": str(product.base_price or Decimal("0")),
+        "variants": [
+            {
+                "id": v["id"],
+                "label": (" ".join([v["color"] or "", v["size"] or ""]).strip() or "Única"),
+                "stock": v["stock"] or 0,
+                "price": (
+                    str(v["price_override"]) if v["price_override"] is not None
+                    else str(product.base_price or Decimal("0"))
+                ),
+                "image_url": abs_media_url(v.get("image")),
+            }
+            for v in vs
+        ],
+    }
+    return JsonResponse(data)
+
+def product_variants_json(request, sku):
+    """
+    Devuelve variantes activas del producto como JSON.
+    Acepta SKU (string) o ID numérico (si 'sku' son dígitos).
+    Corrige image_url para apuntar a MEDIA_URL.
+    """
+    # Buscar por SKU o por ID si es numérico
+    product = Product.objects.filter(sku=sku, active=True).first()
+    if not product and str(sku).isdigit():
+        product = Product.objects.filter(pk=int(sku), active=True).first()
+    if not product:
+        raise Http404("Producto no encontrado")
+
+    # Traer variantes activas
+    vs = product.variants.filter(active=True).values(
+        "id", "color", "size", "stock", "price_override", "image"
     )
 
+    # Helper para URL absoluta de imagen de variante
+    def abs_media_url(path_rel):
+        if not path_rel:
+            return None
+        # path_rel suele ser "variants/archivo.jpg", lo preficamos con MEDIA_URL
+        rel = settings.MEDIA_URL.rstrip("/") + "/" + str(path_rel).lstrip("/")
+        return request.build_absolute_uri(rel)
+
+    data = {
+        "sku": product.sku,
+        "public_name": product.public_name,
+        "base_price": str(product.base_price or Decimal("0")),
+        "variants": [
+            {
+                "id": v["id"],
+                "label": (" ".join([v["color"] or "", v["size"] or ""]).strip() or "Única"),
+                "stock": v["stock"] or 0,
+                "price": (
+                    str(v["price_override"]) if v["price_override"] is not None
+                    else str(product.base_price or Decimal("0"))
+                ),
+                "image_url": abs_media_url(v.get("image")),
+            }
+            for v in vs
+        ],
+    }
+    return JsonResponse(data)
+
+
+
 def catalog(request):
+    from decimal import Decimal
     q = (request.GET.get("q") or "").strip()
 
     # lee t= o tech=
@@ -237,7 +362,55 @@ def catalog(request):
     paginator = Paginator(qs, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
-    products = page_obj.object_list
+
+    # --- Adjuntamos campos "seguros para template" (sin "_") ---
+    products = list(page_obj.object_list)
+    now = timezone.now()
+
+    for p in products:
+        percent = None
+        ends_at = None
+
+        # Si tenés un modelo de ofertas/promos y un helper, intentamos usarlo.
+        # Si no existe, cae al fallback sin romper.
+        promo = None
+        try:
+            # Ejemplo: Offer.objects.active_for_product(p, now=now).first()
+            from .models import Offer  # si no existe, entra al except
+            if hasattr(Offer.objects, "active_for_product"):
+                promo = Offer.objects.active_for_product(p, now=now).first()
+        except Exception:
+            promo = None
+
+        if promo:
+            try:
+                percent = int(promo.percent or 0)
+            except Exception:
+                percent = None
+            ends_at = getattr(promo, "ends_at", None)
+        else:
+            # Fallback: si guardaste algún percent/fecha en el Product
+            for attr in ("current_discount_percent", "discount_percent", "promo_percent"):
+                v = getattr(p, attr, None)
+                if v:
+                    try:
+                        percent = int(v)
+                        break
+                    except Exception:
+                        pass
+            for attr in ("discount_ends_at", "promo_ends_at", "offer_ends_at"):
+                v = getattr(p, attr, None)
+                if v:
+                    ends_at = v
+                    break
+
+        p.view_discount_percent = percent  # <- OK en templates
+        p.view_promo_ends = ends_at        # <- OK en templates
+
+        if percent and percent > 0:
+            p.view_discounted_price = (p.base_price * (Decimal(100 - percent) / Decimal(100))).quantize(Decimal("0.01"))
+        else:
+            p.view_discounted_price = None
 
     return render(
         request,
@@ -253,6 +426,7 @@ def catalog(request):
             "is_3d": tech == "3D",
         },
     )
+
 
 def product_detail(request, pk=None, sku=None):
     if pk is not None:
@@ -273,44 +447,424 @@ def product_detail(request, pk=None, sku=None):
         {"product": product, "variants": variants},
     )
 
+def _cart_qty(session) -> int:
+    cart = _get_cart(session)
+    if not isinstance(cart, dict):
+        return 0
+    total = 0
+    for v in cart.values():
+        try:
+            total += int(v)
+        except Exception:
+            pass
+    return total
+
 @require_POST
 def cart_add(request):
-    """
-    Versión HTML (redirige con mensajes).
-    Si querés una versión JSON, podés crear otra vista 'cart_add_api'.
-    """
-    variant_id = request.POST.get("variant_id")
-    qty = int(request.POST.get("qty", "1") or "1")
+    # ¿viene JSON?
+    if request.content_type and "application/json" in request.content_type:
+        try:
+            payload = json.loads((request.body or b"").decode("utf-8") or "{}")
+        except Exception:
+            return HttpResponseBadRequest("JSON inválido")
+        variant_id = payload.get("variant_id")
+        qty = payload.get("qty", 1)
+    else:
+        variant_id = request.POST.get("variant_id")
+        qty = request.POST.get("qty", "1")
+
+    # Parseo seguro
+    try:
+        variant_id = int(variant_id)
+    except Exception:
+        return HttpResponseBadRequest("variant_id inválido")
+
+    if isinstance(qty, dict):
+        qty = qty.get("qty", 1)
+    try:
+        qty = int(qty)
+    except Exception:
+        qty = 1
+    qty = max(1, qty)
 
     v = get_object_or_404(Variant, pk=variant_id, active=True, product__active=True)
 
-    if qty < 1:
-        qty = 1
-
-    if v.stock is None or v.stock < qty:
+    # Stock
+    if v.stock is not None and v.stock < qty:
+        if "application/json" in (request.headers.get("Accept") or "") or \
+           request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"ok": False, "error": "stock", "message": "No hay stock suficiente"}, status=400)
         messages.error(request, "No hay stock suficiente para esa variante.")
         return redirect(request.META.get("HTTP_REFERER", "catalog"))
 
-    messages.success(request, "Producto agregado al carrito.")
-    return redirect("catalog")
+    # Carrito en sesión
+    cart = _get_cart(request.session)
+    if not isinstance(cart, dict):
+        cart = {}
+
+    prev = cart.get(str(v.id), 0)
+    try:
+        current = int(prev)
+    except Exception:
+        current = 0
+
+    cart[str(v.id)] = current + qty
+    _save_cart(request.session, cart)
+
+    # Respuesta
+    if "application/json" in (request.headers.get("Accept") or "") or \
+       request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"ok": True, "cart_qty": _cart_qty(request.session)})
+    else:
+        messages.success(request, "Producto agregado al carrito.")
+        return redirect(request.META.get("HTTP_REFERER", "catalog"))
 
 def cart_remove(request):
+    variant_id = request.POST.get("variant_id")
+    cart = _get_cart(request.session)
+
+    if not variant_id:
+        messages.error(request, "No se indicó la variante a quitar.")
+        return redirect("cart")
+
+    # Aceptamos claves str o int
+    removed = False
+    if isinstance(cart, dict):
+        if variant_id in cart:
+            cart.pop(variant_id, None)
+            removed = True
+        else:
+            # intentar con int->str / str->int
+            try:
+                cart.pop(str(int(variant_id)), None)
+                removed = True
+            except Exception:
+                pass
+
+    _save_cart(request.session, cart)
+
+    if removed:
+        messages.success(request, "Producto quitado del carrito.")
+    else:
+        messages.info(request, "Ese producto ya no estaba en el carrito.")
+
     return redirect("cart")
 
+def cart_update(request):
+    """
+    Actualiza cantidades del carrito.
+    Admite:
+      - op=set  qty=N      → fija cantidad exacta
+      - op=add  qty=N      → suma N a la cantidad actual
+      - op=sub  qty=N      → resta N a la cantidad actual
+    Si la cantidad final queda en 0, se elimina la línea.
+    Responde JSON si el cliente lo pide, si no redirige a /cart/.
+    """
+    # Soportar JSON y form-url-encoded
+    if request.content_type and "application/json" in request.content_type:
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            return HttpResponseBadRequest("JSON inválido")
+        variant_id = data.get("variant_id")
+        op = (data.get("op") or "set").strip().lower()
+        qty_in = data.get("qty", 1)
+    else:
+        variant_id = request.POST.get("variant_id")
+        op = (request.POST.get("op") or "set").strip().lower()
+        qty_in = request.POST.get("qty", "1")
+
+    # Normalizar
+    try:
+        qty = max(0, int(qty_in))
+    except Exception:
+        qty = 0
+
+    if not variant_id:
+        return HttpResponseBadRequest("Falta variant_id")
+
+    # Validamos la variante (y de paso conseguimos stock)
+    v = get_object_or_404(Variant, pk=variant_id, active=True, product__active=True)
+
+    cart = _get_cart(request.session)
+    key = str(v.id)
+    current = int(cart.get(key, 0))
+
+    if op == "add":
+        new_qty = current + qty
+    elif op == "sub":
+        new_qty = current - qty
+    else:  # "set" (default)
+        new_qty = qty
+
+    # Clamp [0..stock] si tenés stock definido
+    if v.stock is not None:
+        new_qty = min(new_qty, max(0, int(v.stock or 0)))
+    new_qty = max(0, new_qty)
+
+    if new_qty <= 0:
+        cart.pop(key, None)
+    else:
+        cart[key] = new_qty
+
+    _save_cart(request.session, cart)
+
+    # ¿JSON o redirección normal?
+    wants_json = "application/json" in (request.headers.get("Accept") or "")
+    if wants_json:
+        cart_qty = sum(int(x) for x in cart.values())
+        return JsonResponse({
+            "ok": True,
+            "variant_id": v.id,
+            "line_qty": cart.get(key, 0),
+            "cart_qty": cart_qty
+        })
+
+    # Mensajitos opcionales
+    if op == "sub":
+        messages.success(request, f"Se descontaron {qty} u. de {v.product.public_name or v.product.sku}.")
+    elif op == "add":
+        messages.success(request, f"Se agregaron {qty} u. de {v.product.public_name or v.product.sku}.")
+    else:
+        messages.success(request, f"Cantidad actualizada.")
+
+    return redirect("cart")
+
+
+from decimal import Decimal, ROUND_HALF_UP
+from django.views.decorators.http import require_POST
+from django.shortcuts import redirect
+from django.http import JsonResponse, HttpResponseBadRequest
+
+PLACEHOLDER = "https://via.placeholder.com/64?text=%E2%80%94"  # si no lo tenías ya arriba
+
 def cart_view(request):
-    return render(request, "shop/cart.html", {"items": [], "total": Decimal("0.00")})
+    # --- cupón (opcional) ---
+    coupon_msg = ""
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "apply_coupon":
+            code = (request.POST.get("coupon") or "").strip().upper()
+            COUPONS = {"DOMINGO": 10, "SUB10": 10, "LAS5": 5}
+            pct = COUPONS.get(code)
+            if pct:
+                request.session["coupon"] = {"code": code, "percent": pct}
+                request.session.modified = True
+                coupon_msg = f"Cupón {code} aplicado ({pct}%)."
+            else:
+                request.session.pop("coupon", None)
+                request.session.modified = True
+                coupon_msg = "Cupón inválido."
+        elif action == "remove_coupon":
+            request.session.pop("coupon", None)
+            request.session.modified = True
+            coupon_msg = "Cupón quitado."
+
+    applied_coupon = request.session.get("coupon")
+    pct = Decimal(str(applied_coupon.get("percent", 0))) if applied_coupon else Decimal("0")
+
+    # --- items desde la sesión ---
+    items_raw, subtotal = _cart_items_from_session(request)
+
+    view_items = []
+    for it in items_raw:
+        v = it["variant"]   # Variant (ya viene con product por select_related)
+        p = v.product
+
+        # etiqueta variante
+        variant_label = f"{(v.color or '').strip()} {(v.size or '').strip()}".strip() or "Única"
+
+        # imagen (variante > producto > placeholder)
+        img_url = None
+        try:
+            if getattr(v, "image", None):
+                img_url = v.image.url
+        except Exception:
+            img_url = None
+        if not img_url:
+            img = p.images.order_by("order").first()
+            if img:
+                try:
+                    img_url = img.image.url
+                except Exception:
+                    img_url = None
+        if not img_url:
+            img_url = PLACEHOLDER
+
+        unit = it["unit_price"]     # Decimal
+        qty  = it["qty"]
+        line = it["line_total"]
+
+        # aplicar cupón (si hay)
+        unit_now = unit
+        line_now = line
+        if pct and pct != 0:
+            factor = (Decimal("100") - pct) / Decimal("100")
+            unit_now = (unit * factor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            line_now = (unit_now * qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        view_items.append({
+            "variant": v,
+            "product": p,
+            "variant_label": variant_label,
+            "qty": qty,
+            "unit_price": unit,
+            "line_total": line,
+            "unit_price_now": unit_now,
+            "line_total_now": line_now,
+            "thumb": img_url,
+        })
+
+    # totales
+    total = sum(x["line_total_now"] for x in view_items) if pct else subtotal
+
+    return render(
+        request,
+        "shop/cart.html",
+        {
+            "items": view_items,
+            "subtotal": subtotal,
+            "total": total,
+            "applied_coupon": applied_coupon,
+            "coupon_msg": coupon_msg,
+        },
+    )
+
+@require_POST
+def cart_update(request):
+    """
+    Actualiza cantidades del carrito:
+      - op=add  qty=K  -> suma K
+      - op=sub  qty=K  -> resta K (si queda <=0, elimina)
+      - op=set  qty=K  -> fija K (si K<=0, elimina)
+    Soporta AJAX (Accept: application/json) devolviendo cart_qty.
+    """
+    variant_id = request.POST.get("variant_id")
+    if not variant_id:
+        return HttpResponseBadRequest("Falta variant_id")
+
+    op = (request.POST.get("op") or "set").strip().lower()
+    try:
+        qty = int(request.POST.get("qty", "1"))
+    except Exception:
+        qty = 1
+    qty = max(0, qty)
+
+    # buscar variante
+    try:
+        v = Variant.objects.select_related("product").get(pk=variant_id, active=True, product__active=True)
+    except Variant.DoesNotExist:
+        return HttpResponseBadRequest("Variante inexistente")
+
+    # carrito actual
+    cart = _get_cart(request.session)
+    cur = int(cart.get(str(v.id), 0))
+
+    if op == "add":
+        new_qty = cur + qty
+    elif op == "sub":
+        new_qty = cur - qty
+    else:  # set (por default)
+        new_qty = qty
+
+    # respetar stock si existe
+    if v.stock is not None:
+        new_qty = min(new_qty, max(0, int(v.stock)))
+
+    # aplicar cambio
+    if new_qty <= 0:
+        cart.pop(str(v.id), None)
+    else:
+        cart[str(v.id)] = new_qty
+
+    _save_cart(request.session, cart)
+
+    # respuesta AJAX opcional
+    if "application/json" in (request.headers.get("Accept") or "") or \
+       request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        cart_qty = sum(int(x) for x in cart.values()) if isinstance(cart, dict) else 0
+        return JsonResponse({"ok": True, "cart_qty": cart_qty, "variant_id": v.id, "new_qty": new_qty})
+
+    # navegación normal
+    return redirect("cart")
+
 
 def checkout(request):
-    if request.method == "POST":
-        email = request.POST.get("email", "").strip()
-        full_name = request.POST.get("full_name", "").strip()
-        if not email or not full_name:
-            return render(request, "shop/checkout.html", {"error": "Completá tus datos"})
+    # Precios de envío (podés moverlos a settings)
+    SHIPPING_PRICES = {
+        "pickup": Decimal("0"),
+        "standard": Decimal("3500"),  # ajustá a gusto
+        "express": Decimal("6000"),
+    }
+
+    items, subtotal = _cart_items_from_session(request)
+    if request.method == "GET":
+        if not items:
+            messages.warning(request, "Tu carrito está vacío.")
+            return redirect("catalog")
+        shipping_method = request.GET.get("shipping_method") or "pickup"
+        shipping = SHIPPING_PRICES.get(shipping_method, SHIPPING_PRICES["pickup"])
+        total = (subtotal + shipping).quantize(Decimal('0.01'))
+        return render(request, "shop/checkout.html", {
+            "items": items,
+            "subtotal": subtotal,
+            "shipping": shipping,
+            "total": total,
+            "shipping_method": shipping_method,
+            "shipping_prices": SHIPPING_PRICES,
+        })
+
+    # POST -> validar y crear orden + items
+    full_name = (request.POST.get("full_name") or "").strip()
+    email = (request.POST.get("email") or "").strip()
+    notes = (request.POST.get("notes") or "").strip()
+    shipping_method = (request.POST.get("shipping_method") or "pickup").strip()
+
+    if not full_name or not email:
+        return render(request, "shop/checkout.html", {
+            "error": "Completá tus datos.",
+            "items": items,
+            "subtotal": subtotal,
+            "shipping": SHIPPING_PRICES.get(shipping_method, 0),
+            "total": (subtotal + SHIPPING_PRICES.get(shipping_method, 0)).quantize(Decimal('0.01')),
+            "shipping_method": shipping_method,
+            "shipping_prices": SHIPPING_PRICES,
+            "full_name": full_name,
+            "email": email,
+            "notes": notes,
+        })
+
+    if not items:
+        messages.warning(request, "Tu carrito está vacío.")
+        return redirect("catalog")
+
+    shipping = SHIPPING_PRICES.get(shipping_method, SHIPPING_PRICES["pickup"])
+    total = (subtotal + shipping).quantize(Decimal('0.01'))
+
+    with transaction.atomic():
         order = Order.objects.create(
-            email=email, full_name=full_name, total=Decimal("0.00"), status="pending"
+            email=email,
+            full_name=full_name,
+            total=total,
+            status="pending",
         )
-        return redirect(f"/pay/mp/create/?order_id={order.id}")
-    return render(request, "shop/checkout.html")
+        # Guardar items
+        for it in items:
+            OrderItem.objects.create(
+                order=order,
+                variant=it["variant"],
+                quantity=it["qty"],
+                unit_price=it["unit_price"],
+            )
+        # (Opcional) guardar notas / método de envío si tu modelo tiene campos
+        if hasattr(order, "notes"):
+            order.notes = f"{notes} | envío: {shipping_method} (${shipping})"
+            order.save(update_fields=["notes", "total"])
+
+    # Vaciar carrito y redirigir a MP
+    request.session[settings.CART_SESSION_KEY] = {}
+    request.session.modified = True
+    return redirect(f"/pay/mp/create/?order_id={order.id}")
 
 def mp_create_preference(request):
     from mercadopago import SDK
@@ -361,6 +915,86 @@ def mp_webhook(request):
 # ---------------------------------------------------------------------
 # Owner / Admin simple
 # ---------------------------------------------------------------------
+
+@login_required(login_url="/admin/login/")
+@staff_required
+def owner_offers(request):
+    """
+    Crea y lista promociones simples.
+    - Podés filtrar por técnica o pegar SKUs (uno por línea) para asociar productos.
+    """
+    from .models import Promotion, Product
+    msg = ""
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        percent = int(request.POST.get("percent") or 0)
+        start_at = request.POST.get("start_at")  # "YYYY-MM-DDTHH:MM"
+        end_at = request.POST.get("end_at")
+        tech = (request.POST.get("tech") or "").strip().upper() or None
+        active = bool(request.POST.get("active"))
+
+        if not name or not percent or not start_at or not end_at:
+            messages.error(request, "Completá nombre, %, inicio y fin.")
+        else:
+            pr = Promotion.objects.create(
+                name=name,
+                percent=max(1, min(90, percent)),
+                start_at=start_at,
+                end_at=end_at,
+                tech_filter=(tech if tech in dict(Product.TECH_CHOICES) else None),
+                active=active,
+            )
+            # SKUs opcionales
+            skus_raw = request.POST.get("skus", "")
+            if skus_raw.strip():
+                skus = [s.strip() for s in skus_raw.splitlines() if s.strip()]
+                ps = list(Product.objects.filter(sku__in=skus))
+                pr.products.add(*ps)
+            messages.success(request, "Promoción creada.")
+            return redirect("owner_offers")
+
+    promos = (
+        Promotion.objects.all()
+        .prefetch_related("products")
+        .order_by("-active", "-end_at", "name")
+    )
+    return render(request, "shop/owner/offers.html", {"promos": promos})
+
+
+@login_required(login_url="/admin/login/")
+@staff_required
+def owner_coupons(request):
+    """
+    Crea y lista cupones.
+    """
+    from .models import Coupon, Product
+    msg = ""
+    if request.method == "POST":
+        code = (request.POST.get("code") or "").strip()
+        percent = int(request.POST.get("percent") or 0)
+        start_at = request.POST.get("start_at") or None
+        end_at = request.POST.get("end_at") or None
+        tech = (request.POST.get("tech") or "").strip().upper() or None
+        active = bool(request.POST.get("active"))
+        limit = request.POST.get("usage_limit") or None
+
+        if not code or not percent:
+            messages.error(request, "Completá código y %.")
+        else:
+            Coupon.objects.create(
+                code=code,
+                percent=max(1, min(90, percent)),
+                start_at=start_at,
+                end_at=end_at,
+                tech_filter=(tech if tech in dict(Product.TECH_CHOICES) else None),
+                active=active,
+                usage_limit=(int(limit) if limit else None),
+            )
+            messages.success(request, "Cupón creado.")
+            return redirect("owner_coupons")
+
+    coupons = Coupon.objects.all().order_by("-active", "code")
+    return render(request, "shop/owner/coupons.html", {"coupons": coupons})
 
 @login_required(login_url="/admin/login/")
 @staff_required
@@ -871,31 +1505,25 @@ def _draw_watermark(c: canvas.Canvas, page_w: float, page_h: float, path: str, r
 @staff_required
 def owner_export_pdf(request):
     """
-    Exporta un PDF de catálogo con:
-      - Foto (si hay)
+    Exporta PDF del catálogo con:
+      - Imagen o placeholder
       - Nombre público
-      - (opcional) SKU si show_sku=1
-    Admite ?q= y ?t= para filtrar, y ?wmark=1 para dibujar watermark.
+      - (opcional) SKU
+      - Precio y (si hay promo) badge y precio con descuento
+    Admite ?q= y ?t=, y ?wmark=1 (watermark), ?show_sku=1.
     """
-    if not REPORTLAB_OK:
-        return HttpResponse(
-            f"ReportLab no disponible en este entorno: {REPORTLAB_ERR}",
-            status=500,
-        )
+    import os
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfgen import canvas as pdfcanvas
+    from reportlab.lib.units import cm
+    from reportlab.lib.utils import ImageReader
 
-    # Flags UI
-    show_sku   = (request.GET.get("show_sku") or "").lower() in ("1", "true", "on", "yes")
-    draw_wm    = (request.GET.get("wmark")    or "").lower() in ("1", "true", "on", "yes")
-    show_contact = (request.GET.get("contact") or "1").lower() in ("1", "true", "on", "yes")
-
-    wa_url = (request.GET.get("wa") or "").strip() or getattr(settings, "SHOP_WHATSAPP_URL", "")
-    ig_url = (request.GET.get("ig") or "").strip() or getattr(settings, "SHOP_INSTAGRAM_URL", "")
     show_sku = (request.GET.get("show_sku") or "").lower() in ("1", "true", "on", "yes")
     draw_wm  = (request.GET.get("wmark") or "").lower()    in ("1", "true", "on", "yes")
 
     q     = (request.GET.get("q") or "").strip()
     t_raw = (request.GET.get("t") or request.GET.get("tech") or "").strip()
-    tech  = _normalize_tech(t_raw)  # SUB/LAS/3D/OTR o None
+    tech  = _normalize_tech(t_raw)
 
     qs = Product.objects.filter(active=True)
     if q:
@@ -912,49 +1540,58 @@ def owner_export_pdf(request):
     response["Content-Disposition"] = 'attachment; filename="catalogo.pdf"'
 
     page_w, page_h = landscape(A4)
-    c = canvas.Canvas(response, pagesize=(page_w, page_h))
+    c = pdfcanvas.Canvas(response, pagesize=(page_w, page_h))
 
-    # Watermark (si está habilitado y existe el archivo)
+    # Watermark
     wm_path = getattr(settings, "PDF_WATERMARK_IMAGE", None)
     if draw_wm and wm_path and os.path.exists(wm_path):
-        _draw_watermark(c, page_w, page_h, wm_path, rel_width=0.70)  # 18% del ancho de página
+        try:
+            img = ImageReader(wm_path)
+            iw, ih = img.getSize()
+            target_w = page_w * 0.18  # tamaño ajustable
+            ratio = target_w / iw
+            w = target_w
+            h = ih * ratio
+            x = (page_w - w) / 2
+            y = (page_h - h) / 2
+            c.drawImage(img, x, y, width=w, height=h, mask='auto', preserveAspectRatio=True)
+        except Exception:
+            pass
 
-    # Márgenes y layout
+    # Layout
     margin   = 1.0 * cm
     usable_w = page_w - 2 * margin
     usable_h = page_h - 2 * margin
 
     COLS   = 3
-    CARD_H = 7.5 * cm     # más alto para evitar superposiciones
-    IMG_H  = 4.8 * cm     # imagen un poco más alta
-    PAD    = 0.46 * cm
+    CARD_H = 7.8 * cm
+    IMG_H  = 4.2 * cm
+    PAD    = 0.35 * cm
 
-    # Tipografías
     NAME_FONT  = ("Helvetica-Bold", 12)
     SKU_FONT   = ("Helvetica", 9)
     PRICE_FONT = ("Helvetica-Bold", 13)
-    LINE_GAP   = 0.45 * cm  # separación entre renglones
+    PRICE_OLD  = ("Helvetica", 9)
+    LINE_GAP   = 0.46 * cm
 
     card_w        = usable_w / COLS
     rows_per_page = max(1, int(usable_h // CARD_H))
     per_page      = COLS * rows_per_page
 
-    # Cabecera (sin mostrar técnica)
+    # Header
     c.setFont("Helvetica-Bold", 12)
     c.drawString(margin, page_h - margin + 0.3*cm, "Catálogo de productos")
     c.setFont("Helvetica", 9)
-    subt = []
-    if q: subt.append(f"búsqueda: “{q}”")
-    if subt:
-        c.drawString(margin, page_h - margin - 0.1*cm, " | ".join(subt))
+    if q:
+        c.drawString(margin, page_h - margin - 0.1*cm, f"búsqueda: “{q}”")
 
     products = list(qs)
     if not products:
         c.setFont("Helvetica-Oblique", 12)
         c.drawCentredString(page_w/2, page_h/2, "No hay productos para exportar con el filtro aplicado.")
-        c.showPage()
-        c.save()
-        return response
+        c.showPage(); c.save(); return response
+
+    promos = _active_promotions_cached()
 
     def money(d): return f"$ {d:.2f}"
 
@@ -965,26 +1602,35 @@ def owner_export_pdf(request):
 
         if idx_in_page == 0 and idx != 0:
             c.showPage()
-            # Redibujar encabezado + watermark
+            # Redibujar header y watermark
             if draw_wm and wm_path and os.path.exists(wm_path):
-                _draw_watermark(c, page_w, page_h, wm_path, rel_width=0.70)
+                try:
+                    img = ImageReader(wm_path)
+                    iw, ih = img.getSize()
+                    target_w = page_w * 0.18
+                    ratio = target_w / iw
+                    w = target_w
+                    h = ih * ratio
+                    x = (page_w - w) / 2
+                    y = (page_h - h) / 2
+                    c.drawImage(img, x, y, width=w, height=h, mask='auto', preserveAspectRatio=True)
+                except Exception:
+                    pass
             c.setFont("Helvetica-Bold", 12)
             c.drawString(margin, page_h - margin + 0.3*cm, "Catálogo de productos")
             c.setFont("Helvetica", 9)
-            if subt:
-                c.drawString(margin, page_h - margin - 0.1*cm, " | ".join(subt))
-            if show_contact and (wa_url or ig_url):
-                _draw_footer_links(c, page_w, margin, wa_url, ig_url)
+            if q:
+                c.drawString(margin, page_h - margin - 0.1*cm, f"búsqueda: “{q}”")
 
         x = margin + col * card_w
         y_top = page_h - margin - row * CARD_H
         x0, y0 = x + 2, y_top - CARD_H + 2
         w0, h0 = card_w - 4, CARD_H - 4
 
-        # Borde de la tarjeta
+        # Borde
         c.roundRect(x0, y0, w0, h0, 8, stroke=1, fill=0)
 
-        # Imagen (centrada dentro del recuadro)
+        # Imagen
         img_box_x = x0 + PAD
         img_box_y = y_top - PAD - IMG_H
         img_box_w = w0 - 2 * PAD
@@ -1000,8 +1646,20 @@ def owner_export_pdf(request):
             c.setFont("Helvetica-Oblique", 8)
             c.drawCentredString(img_box_x + img_box_w/2, img_box_y + img_box_h/2 - 4, "Sin imagen")
 
-        # Área de texto (debajo de la imagen)
-        text_top = img_box_y - 0.50 * cm
+        # Promo (si aplica)
+        promo = _best_promo_for_product(promos, p)
+        discounted = None
+        if promo:
+            discounted = _apply_percent(p.base_price or Decimal("0"), promo.percent)
+            # Badge rojo arriba-izquierda
+            c.setFillColorRGB(0.87, 0.14, 0.14)
+            c.setFont("Helvetica-Bold", 9.5)
+            badge = f"{promo.percent}% OFF"
+            c.drawString(img_box_x + 2, img_box_y + img_box_h - 10, badge)
+            c.setFillColorRGB(0, 0, 0)
+
+        # Área de texto
+        text_top = img_box_y - 0.22 * cm
         max_w    = w0 - 2 * PAD
 
         name = p.public_name or p.sku or "(sin nombre)"
@@ -1012,17 +1670,31 @@ def owner_export_pdf(request):
         y_run = text_top - LINE_GAP
 
         if show_sku and p.sku:
-            sku_line = f"SKU: {p.sku}"
-            sku_line = _truncate_to_width(c, sku_line, SKU_FONT[0], SKU_FONT[1], max_w)
+            sku_line = _truncate_to_width(c, f"SKU: {p.sku}", SKU_FONT[0], SKU_FONT[1], max_w)
             c.setFont(*SKU_FONT)
             c.drawString(x0 + PAD, y_run, sku_line)
             y_run -= LINE_GAP
 
-        # Precio bien abajo a la derecha para que no choque con nombre/SKU
-        c.setFont(*PRICE_FONT)
-        c.drawRightString(x0 + PAD + max_w, y0 + 0.65 * cm, money(p.base_price or Decimal("0")))
-        if show_contact and (wa_url or ig_url):
-            _draw_footer_links(c, page_w, margin, wa_url, ig_url)
+        # Precio(s)
+        if discounted:
+            # Precio viejo (tachado)
+            c.setFont(*PRICE_OLD)
+            old_x = x0 + PAD
+            old_y = y0 + 0.95 * cm
+            text = money(p.base_price or Decimal("0"))
+            c.drawString(old_x, old_y, text)
+            # línea de tachado
+            w_text = c.stringWidth(text, PRICE_OLD[0], PRICE_OLD[1])
+            c.line(old_x, old_y + 2, old_x + w_text, old_y + 2)
+            # Precio nuevo
+            c.setFont(*PRICE_FONT)
+            c.drawRightString(x0 + PAD + max_w, y0 + 0.65 * cm, money(discounted))
+            # Fin promo
+            c.setFont("Helvetica", 7)
+            c.drawString(x0 + PAD, y0 + 0.35 * cm, f"hasta {promo.end_at:%d/%m %H:%M}")
+        else:
+            c.setFont(*PRICE_FONT)
+            c.drawRightString(x0 + PAD + max_w, y0 + 0.65 * cm, money(p.base_price or Decimal("0")))
 
     c.showPage()
     c.save()

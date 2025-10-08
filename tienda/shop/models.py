@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from decimal import Decimal
+from django.utils import timezone
 
 class Category(models.Model):
     name = models.CharField(max_length=120, unique=True)
@@ -161,3 +162,81 @@ class PriceChangeItem(models.Model):
     def __str__(self) -> str:
         return f"{self.product_id}: {self.old_price} -> {self.new_price}"
 
+class Promotion(models.Model):
+    name = models.CharField(max_length=120)
+    percent = models.PositiveIntegerField(help_text="Porcentaje 1..90")
+    start_at = models.DateTimeField()
+    end_at = models.DateTimeField()
+    # Si es NULL => aplica a todas las técnicas
+    tech_filter = models.CharField(
+        max_length=3,
+        choices=Product.TECH_CHOICES,
+        blank=True, null=True
+    )
+    # Si se elige una lista de productos, tiene prioridad sobre tech_filter
+    products = models.ManyToManyField(Product, blank=True, related_name="promotions")
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-active", "-end_at", "name")
+
+    def __str__(self):
+        return f"{self.name} ({self.percent}% hasta {self.end_at:%Y-%m-%d %H:%M})"
+
+    def is_active_now(self):
+        now = timezone.now()
+        return self.active and self.start_at <= now <= self.end_at
+
+    def applies_to(self, product: Product) -> bool:
+        if not self.is_active_now():
+            return False
+        # Si hay lista de productos, manda eso
+        if self.products.exists():
+            return self.products.filter(pk=product.pk).exists()
+        # Si hay filtro de técnica, debe coincidir
+        if self.tech_filter:
+            return product.tech == self.tech_filter
+        # Sin filtro => aplica a todos
+        return True
+
+
+class Coupon(models.Model):
+    code = models.CharField(max_length=64, unique=True)
+    percent = models.PositiveIntegerField(help_text="Porcentaje 1..90")
+    start_at = models.DateTimeField(blank=True, null=True)
+    end_at = models.DateTimeField(blank=True, null=True)
+    tech_filter = models.CharField(
+        max_length=3,
+        choices=Product.TECH_CHOICES,
+        blank=True, null=True
+    )
+    active = models.BooleanField(default=True)
+    usage_limit = models.PositiveIntegerField(blank=True, null=True)
+    used_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-active", "code")
+
+    def __str__(self):
+        return f"{self.code} ({self.percent}%)"
+
+    def is_active_now(self):
+        now = timezone.now()
+        if not self.active:
+            return False
+        if self.start_at and now < self.start_at:
+            return False
+        if self.end_at and now > self.end_at:
+            return False
+        if self.usage_limit is not None and self.used_count >= self.usage_limit:
+            return False
+        return True
+
+    def applies_to(self, product: Product) -> bool:
+        if not self.is_active_now():
+            return False
+        if self.tech_filter:
+            return product.tech == self.tech_filter
+        return True

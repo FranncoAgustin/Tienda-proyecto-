@@ -1,1 +1,252 @@
-<html><body><h1>Carrito</h1>{% for it in items %}<div>{{it.name}} x {{it.qty}} = ${{it.subtotal}}</div>{% empty %}Vacío{% endfor %}<div>Total ${{total}}</div>{% if items %}<a href='/checkout/'>Pagar</a>{% endif %}</body></html>
+{# shop/templates/shop/cart_add.html #}
+<div class="card shadow-sm">
+  <div class="card-body" id="cart-add"
+    data-variants-url="{% if product %}{% url 'product_variants_by_id_json' pk=product.id %}{% endif %}">
+    <h2 class="h5 mb-3">Agregar al carrito</h2>
+
+    <form method="post" action="{% url 'cart_add' %}" id="cart-add-form" class="needs-validation" novalidate>
+      {% csrf_token %}
+
+      <!-- Variante -->
+      <div class="mb-3">
+        <label for="variant_id" class="form-label">Variante</label>
+        <select class="form-select" name="variant_id" id="variant_id" required disabled>
+          <option value="">Cargando variantes…</option>
+          {% if product %}
+          {% for v in product.variants.all %}
+          <option value="{{ v.id }}">
+            {{ v.color }} {{ v.size }}{% if not v.color and not v.size %}Única{% endif %}
+          </option>
+          {% endfor %}
+          {% endif %}
+        </select>
+        <div class="invalid-feedback">Elegí una variante.</div>
+      </div>
+
+      <!-- Precio + Stock -->
+      <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <div>
+          <div class="small text-muted mb-1 d-none" id="price-old-wrap">
+            <s id="price-old">$ 0,00</s>
+          </div>
+          <div class="fs-4 fw-semibold" id="price-now">$ 0,00</div>
+        </div>
+        <div class="ms-auto">
+          <span class="badge text-bg-secondary" id="stock-badge">Stock: —</span>
+        </div>
+      </div>
+
+      <!-- Cantidad -->
+      <div class="mb-3" style="max-width: 240px;">
+        <label for="qty" class="form-label">Cantidad</label>
+        <div class="input-group">
+          <button class="btn btn-outline-secondary" type="button" id="btn-minus">−</button>
+          <input type="number" class="form-control text-center" min="1" value="1" name="qty" id="qty" required>
+          <button class="btn btn-outline-secondary" type="button" id="btn-plus">+</button>
+        </div>
+        <div class="form-text" id="qty-help">Máximo: —</div>
+      </div>
+
+      <button class="btn btn-primary w-100" type="submit" id="btn-add" disabled>
+        Agregar al carrito
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const root = document.getElementById('cart-add');
+    const variantsUrl = root?.dataset?.variantsUrl || "";
+    const sel = document.getElementById('variant_id');
+    const qty = document.getElementById('qty');
+    const minus = document.getElementById('btn-minus');
+    const plus = document.getElementById('btn-plus');
+    const priceNow = document.getElementById('price-now');
+    const priceOldWrap = document.getElementById('price-old-wrap');
+    const priceOld = document.getElementById('price-old');
+    const stockBadge = document.getElementById('stock-badge');
+    const qtyHelp = document.getElementById('qty-help');
+    const btnAdd = document.getElementById('btn-add');
+
+    let basePrice = 0;
+    let variants = [];
+    let maxStock = null;
+
+    function formatMoney(n) {
+      const num = Number(n || 0);
+      return '$ ' + num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function setQty(newVal) {
+      const max = (maxStock ?? 999999);
+      const v = Math.max(1, Math.min(Number(newVal) || 1, max));
+      qty.value = v;
+    }
+
+    function updateUI() {
+      const vid = sel.value;
+      const v = variants.find(x => String(x.id) === String(vid));
+
+      if (!v) {
+        btnAdd.disabled = true;
+        sel.disabled = variants.length === 0;
+        priceNow.textContent = formatMoney(basePrice);
+        priceOldWrap.classList.add('d-none');
+        stockBadge.textContent = 'Stock: —';
+        qtyHelp.textContent = 'Máximo: —';
+        qty.disabled = true; minus.disabled = true; plus.disabled = true;
+
+        // avisar al detalle que no hay variante válida
+        document.dispatchEvent(new CustomEvent('cart:variant-changed', { detail: null }));
+        return;
+      }
+
+      // Precio
+      const price = Number(v.price ?? basePrice);
+      const base = Number(basePrice);
+      priceNow.textContent = formatMoney(price);
+      if (price < base) {
+        priceOld.textContent = formatMoney(base);
+        priceOldWrap.classList.remove('d-none');
+      } else {
+        priceOldWrap.classList.add('d-none');
+      }
+
+      // Stock
+      const st = Number(v.stock || 0);
+      maxStock = st > 0 ? st : 0;
+      stockBadge.className = 'badge ' + (st > 0 ? 'text-bg-success' : 'text-bg-secondary');
+      stockBadge.textContent = 'Stock: ' + st;
+      qtyHelp.textContent = 'Máximo: ' + (st || 0);
+
+      // Qty
+      qty.disabled = st <= 0; minus.disabled = st <= 0; plus.disabled = st <= 0;
+      setQty(qty.value);
+
+      // Botón agregar
+      btnAdd.disabled = st <= 0 || !vid;
+
+      // avisar al product_detail (p.ej. para cambiar la foto)
+      document.dispatchEvent(new CustomEvent('cart:variant-changed', { detail: v }));
+    }
+
+    async function loadVariants() {
+      if (!variantsUrl) {
+        // página sin product (p.ej. /cart/) → dejar inerte
+        sel.innerHTML = '<option value="">Seleccioná una variante</option>';
+        sel.disabled = true;
+        btnAdd.disabled = true;
+        qty.disabled = true; minus.disabled = true; plus.disabled = true;
+        return;
+      }
+      try {
+        const r = await fetch(variantsUrl, { headers: { 'Accept': 'application/json' } });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        basePrice = Number(data.base_price || 0);
+        variants = (data.variants || []).map(v => ({
+          id: v.id,
+          label: v.label || 'Única',
+          stock: Number(v.stock || 0),
+          price: Number(v.price ?? basePrice),
+          image_url: v.image_url || null,
+        }));
+
+        sel.innerHTML = '';
+        if (variants.length === 0) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'Sin variantes disponibles';
+          sel.appendChild(opt);
+          sel.disabled = true;
+        } else {
+          variants.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.label + (v.stock > 0 ? ` — ${v.stock} u.` : ' — sin stock');
+            sel.appendChild(opt);
+          });
+          sel.disabled = false;
+        }
+
+        const firstWithStock = variants.find(v => v.stock > 0);
+        sel.value = firstWithStock ? firstWithStock.id : (variants[0]?.id ?? '');
+        updateUI();
+      } catch (e) {
+        console.error('Error cargando variantes:', e);
+        sel.disabled = false;
+        updateUI();
+      }
+    }
+
+    // Eventos select/cantidad
+    sel.addEventListener('change', updateUI);
+    minus.addEventListener('click', () => setQty((Number(qty.value) || 1) - 1));
+    plus.addEventListener('click', () => setQty((Number(qty.value) || 1) + 1));
+    qty.addEventListener('input', () => setQty(qty.value));
+
+    // Submit por fetch (para que el componente sea autosuficiente)
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    const csrftoken = getCookie('csrftoken');
+    const form = document.getElementById('cart-add-form');
+
+    if (form && btnAdd) {
+      form.addEventListener('submit', async function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault(); event.stopPropagation();
+          form.classList.add('was-validated');
+          return;
+        }
+        event.preventDefault(); // usamos fetch
+        const fd = new FormData(form);
+        const payload = {
+          variant_id: fd.get('variant_id'),
+          qty: Number(fd.get('qty') || 1)
+        };
+        try {
+          const txt = btnAdd.textContent;
+          btnAdd.disabled = true;
+          btnAdd.textContent = 'Agregando…';
+          const r = await fetch("{% url 'cart_add' %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrftoken,
+              'Accept': 'application/json'
+            },
+            credentials: 'same-origin',  // ← agregá esta línea
+            body: JSON.stringify(payload)
+          });
+          if (!r.ok) throw new Error((await r.text()).slice(0, 200));
+          const j = await r.json().catch(() => ({}));
+          const badge = document.querySelector('[data-cart-badge]');
+          if (badge && j.cart_qty != null) badge.textContent = j.cart_qty;
+          btnAdd.textContent = 'Agregado ✓';
+          setTimeout(() => { btnAdd.disabled = false; btnAdd.textContent = txt; }, 900);
+        } catch (e) {
+          alert('No se pudo agregar: ' + (e.message || ''));
+          btnAdd.disabled = false;
+          btnAdd.textContent = 'Agregar al carrito';
+        }
+      });
+    }
+
+    // Validación Bootstrap para estilos
+    (function () {
+      form?.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault(); event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    })();
+
+    // Init
+    loadVariants();
+  })();
+</script>
